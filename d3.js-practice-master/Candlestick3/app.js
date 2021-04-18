@@ -1,3 +1,4 @@
+
 var margin = {top: 20, right: 50, bottom: 30, left: 60},
             width = 960 - margin.left - margin.right,
             height = 500 - margin.top - margin.bottom;
@@ -5,6 +6,12 @@ var margin = {top: 20, right: 50, bottom: 30, left: 60},
 // 設定時間格式
 var parseDate = d3.timeParse("%Y%m%d");
 var monthDate = d3.timeParse("%Y%m");
+
+var testData = [
+        {date : parseDate('20181107'),value:35,type:'bye'},
+        {date : parseDate('20181108'),value:36},
+        {date : parseDate('20190121'),value:34,type:'sell'},
+]
 
 // K線圖的x
 var x = techan.scale.financetime()
@@ -19,6 +26,16 @@ var yVolume = d3.scaleLinear()
         .range([height , height - 60]);
 //成交量的x
 var xScale = d3.scaleBand().range([0, width]).padding(0.15);
+
+var tradearrow = techan.plot.tradearrow()
+.xScale(x)
+.yScale(y)
+.y(function(d) {
+    // Display the buy and sell arrows a bit above and below the price, so the price is still visible
+    if(d.type === 'buy') return y(d.low)+5;
+    if(d.type === 'sell') return y(d.high)-5;
+    else return y(d.price);
+});
 
 var smac = techan.plot.sma()
         .xScale(x)
@@ -135,6 +152,7 @@ function loadJSON(file, type) {
         
     }).sort(function(a, b) { return d3.ascending(accessor.d(a), accessor.d(b)); });
     
+
     
     var newData = jsonData.map(function(d) {
         if (type == "date") {
@@ -150,11 +168,15 @@ function loadJSON(file, type) {
         }
         
     }).reverse();
-        
+
+    svg.append("g")
+        .attr("class", "tradearrow")
+        .attr("clip-path", "url(#ohlcClip)");
+
     svg.append("g")
             .attr("class", "candlestick");
     svg.append("g")
-            .attr("class", "sma ma-c");
+            .attr("class", "sma ma-c up");
     svg.append("g")
             .attr("class", "sma ma-0");
     svg.append("g")
@@ -188,6 +210,13 @@ function draw(data, volumeData) {
     xScale.domain(volumeData.map(function(d){return d.date;}))
     yVolume.domain(techan.scale.plot.volume(data).domain());
 
+
+    var trades = [
+        { date: data[1].date, type: "buy", price: data[1].low, low: data[1].low, high: data[1].high },
+        { date: data[7].date, type: "sell", price: data[7].high, low: data[7].low, high: data[7].high },
+        { date: data[11].date, type: "buy", price: data[11].low, low: data[11].low, high: data[11].high },
+        { date: data[18].date, type: "sell", price: data[18].low, low: data[18].low, high: data[18].high }
+    ];
     // Add a clipPath: everything out of this area won't be drawn.
     var clip = svg.append("defs").append("svg:clipPath")
       .attr("id", "clip")
@@ -212,6 +241,7 @@ function draw(data, volumeData) {
         .enter().append("g")
         .attr("clip-path", "url(#clip)");
     
+        //成交量bar顏色判斷
     chart.append("rect")
         .attr("class", "volumeBar")
         .attr("x", function(d) {return xScale(d.date);})
@@ -244,12 +274,15 @@ function draw(data, volumeData) {
         .each(function(d) {
         dataArr = d;
     });
-    
-    svg.select("g.sma.ma-c").attr("clip-path", "url(#candlestickClip)").datum(techan.indicator.sma().period(1)(data)).call(sma0);
+    console.log(data);
+    console.log(testData);
+    console.log(techan.indicator.sma().period(50)(data));//重要
+    svg.select("g.sma.ma-c").attr("clip-path", "url(#candlestickClip)").datum(testData).call(sma0);
     svg.select("g.sma.ma-0").attr("clip-path", "url(#candlestickClip)").datum(techan.indicator.sma().period(10)(data)).call(sma0);
     svg.select("g.sma.ma-1").attr("clip-path", "url(#candlestickClip)").datum(techan.indicator.sma().period(20)(data)).call(sma0);
     svg.select("g.ema.ma-2").attr("clip-path", "url(#candlestickClip)").datum(techan.indicator.sma().period(50)(data)).call(sma0);
-     svg.select("g.volume.axis").call(volumeAxis);
+    svg.select("g.volume.axis").call(volumeAxis);
+    svg.select("g.tradearrow").datum(trades).call(tradearrow);
     
     // 畫十字線並對他設定zoom function
     svg.append("g")
@@ -292,7 +325,7 @@ function zoomed() {
     sma0.yScale(rescaledY);
     sma1.yScale(rescaledY);
     ema2.yScale(rescaledY);
-    
+    tradearrow.yScale(rescaledY);
    // Emulates D3 behaviour, required for financetime due to secondary zoomable scale
     //K線圖 x zoom
     x.zoomable().domain(d3.event.transform.rescaleX(zoomableInit).domain());
@@ -313,6 +346,8 @@ function redraw() {
     svg.select("g.sma.ma-0").call(sma0);
     svg.select("g.sma.ma-1").call(sma1);
     svg.select("g.ema.ma-2").call(ema2);
+    svg.select("g.tradearrow").call(tradearrow);
+
     svg.selectAll("rect.volumeBar")
         .attr("x", function(d) {return xScale(d.date);})
         .attr("width", (xScale.bandwidth()));

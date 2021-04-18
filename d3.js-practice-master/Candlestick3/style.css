@@ -94,7 +94,30 @@ rect.pane {
     pointer-events: all;
 }
 
+.tradearrow path.tradearrow {
+    stroke: none;
+}
 
+.tradearrow path.buy {
+    fill: #0000FF;
+}
+
+.tradearrow path.sell {
+    fill: #9900FF;
+}
+
+.tradearrow path.highlight {
+    fill: none;
+    stroke-width: 2;
+}
+
+.tradearrow path.highlight.buy {
+    stroke: #0000FF;
+}
+
+.tradearrow path.highlight.sell {
+    stroke: #9900FF;
+}
 
 
 
