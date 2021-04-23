@@ -9,8 +9,15 @@ var monthDate = d3.timeParse("%Y%m");
 
 var testData = [
         {date : parseDate('20181107'),value:35,type:'bye'},
-        {date : parseDate('20181108'),value:36},
-        {date : parseDate('20190121'),value:34,type:'sell'},
+        {date : parseDate('20181109'),value:35,type:'bye'},
+        {date : null,value:null},
+        {date : parseDate('20181203'),value:34,type:'sell'},
+        {date : parseDate('20181207'),value:35,type:'sell'},
+        {date : null,value:null},
+        {date : parseDate('20190109'),value:34,type:'sell'},
+        {date : parseDate('20190121'),value:35,type:'sell'},
+        {date : null,value:null},
+
 ]
 
 // K線圖的x
@@ -29,13 +36,13 @@ var xScale = d3.scaleBand().range([0, width]).padding(0.15);
 
 var tradearrow = techan.plot.tradearrow()
 .xScale(x)
-.yScale(y)
-.y(function(d) {
-    // Display the buy and sell arrows a bit above and below the price, so the price is still visible
-    if(d.type === 'buy') return y(d.low)+5;
-    if(d.type === 'sell') return y(d.high)-5;
-    else return y(d.price);
-});
+.yScale(y);
+// .y(function(d) {//用了zoomin的高度會鎖死
+//     // Display the buy and sell arrows a bit above and below the price, so the price is still visible
+//     if(d.type === 'buy') return y(d.low)+5;
+//     if(d.type === 'sell') return y(d.high)-5;
+//     else return y(d.price);
+// });
 
 var smac = techan.plot.sma()
         .xScale(x)
@@ -170,8 +177,7 @@ function loadJSON(file, type) {
     }).reverse();
 
     svg.append("g")
-        .attr("class", "tradearrow")
-        .attr("clip-path", "url(#ohlcClip)");
+        .attr("class", "tradearrow");
 
     svg.append("g")
             .attr("class", "candlestick");
@@ -212,10 +218,10 @@ function draw(data, volumeData) {
 
 
     var trades = [
-        { date: data[1].date, type: "buy", price: data[1].low, low: data[1].low, high: data[1].high },
-        { date: data[7].date, type: "sell", price: data[7].high, low: data[7].low, high: data[7].high },
-        { date: data[11].date, type: "buy", price: data[11].low, low: data[11].low, high: data[11].high },
-        { date: data[18].date, type: "sell", price: data[18].low, low: data[18].low, high: data[18].high }
+        { date: data[1].date, type: "buy", price: 33, low: data[1].low, high: data[1].high },
+        { date: data[7].date, type: "sell", price: 34, low: data[7].low, high: data[7].high },
+        { date: data[11].date, type: "buy", price: 35, low: data[11].low, high: data[11].high },
+        { date: data[18].date, type: "sell", price: 36, low: data[18].low, high: data[18].high }
     ];
     // Add a clipPath: everything out of this area won't be drawn.
     var clip = svg.append("defs").append("svg:clipPath")
@@ -347,7 +353,7 @@ function redraw() {
     svg.select("g.sma.ma-1").call(sma1);
     svg.select("g.ema.ma-2").call(ema2);
     svg.select("g.tradearrow").call(tradearrow);
-
+        
     svg.selectAll("rect.volumeBar")
         .attr("x", function(d) {return xScale(d.date);})
         .attr("width", (xScale.bandwidth()));
