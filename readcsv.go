@@ -27,15 +27,6 @@ func main() {
 
 }
 
-// func writeTxt(data string) {
-// 	options := os.O_WRONLY | os.O_APPEND | os.O_CREATE //開啟檔案的選項
-// 	file, err := os.OpenFile("new.csv", options, os.FileMode(0600))
-// 	check(err)
-// 	_, err = fmt.Fprintln(file, data)
-// 	check(err)
-// 	err = file.Close()
-// }
-
 func readCSV(fileName string) {
 	file, err := os.Open(fileName)
 	if err != nil {
