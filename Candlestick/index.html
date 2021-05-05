@@ -15,9 +15,12 @@
         <p>下方Bar: 成交量</p>
         <!-- <button onclick="loadJSON('https://raw.githubusercontent.com/CyuanChen/d3.js-practice/master/Candlestick3/data.json', 'date')">亞泥日線</button> -->
         <!-- <button onclick="loadJSON('https://raw.githubusercontent.com/CyuanChen/d3.js-practice/master/Candlestick3/monthData.json', 'monthDate')">亞泥月線</button> -->
-        <button onclick="loadJSON('new.csv', 'date')">小台指</button>
+        <input type="text" id="start" value="202101">
+        <input type="text" id="end" value="202104">
+        <button onclick="loadJSON('new.csv','ma.csv','buyAndSell.csv', 'date')">小台指</button>
     <script src="https://d3js.org/d3.v4.min.js"></script>
     <script src="techanjs.js"></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js' integrity='sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ==' crossorigin='anonymous'></script>
     <script type="text/javascript" src="app.js"></script>
     </body>
 </html>

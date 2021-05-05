@@ -1,4 +1,3 @@
-
 var margin = { top: 20, right: 50, bottom: 30, left: 60 },
         width = 1300 - margin.left - margin.right,
         height = 500 - margin.top - margin.bottom;
@@ -112,10 +111,23 @@ var svg = d3.select("body")
 
 
 var dataArr;
-loadJSON("new.csv", "date");
+var dataMaArr_o;
+var dataBuySellArr_o;
+loadJSON("new.csv", "ma.csv","buyAndSell.csv","date");
 
-function loadJSON(file, type) {
+function loadJSON(file,file2,file3 , type) {
+        var date_start = $('#start').val();
+        var date_end = $('#end').val();
+        date_start = monthDate(date_start)
+        date_end = monthDate(date_end)
+        date_end.setMonth(date_end.getMonth() + 1)
         svg.selectAll("*").remove(); // 切換不同資料需要重新畫圖，因此需要先清除原先的圖案
+        d3.csv(file2, function (error, data) {
+                dataMaArr_o = data;//匯入ma資料
+        });
+        d3.csv(file3, function (error, data) {
+                dataBuySellArr_o = data;//匯入買賣資料
+        });
         d3.csv(file, function (error, data) {
                 var accessor = candlestick.accessor();
                 var jsonData = data;
@@ -167,19 +179,20 @@ function loadJSON(file, type) {
                 });
                 //     .reverse();
 
-                svg.append("g")
-                        .attr("class", "tradearrow");
+               
 
                 svg.append("g")
                         .attr("class", "candlestick");
                 svg.append("g")
-                        .attr("class", "sma ma-c up");
+                        .attr("class", "sma ma-c get");
                 svg.append("g")
-                        .attr("class", "sma ma-0");
-                svg.append("g")
-                        .attr("class", "sma ma-1");
-                svg.append("g")
-                        .attr("class", "ema ma-2");
+                        .attr("class", "sma ma-c loss");
+                // svg.append("g")
+                //         .attr("class", "sma ma-0");
+                // svg.append("g")
+                //         .attr("class", "sma ma-1");
+                // svg.append("g")
+                //         .attr("class", "ema ma-2");
                 svg.append("g")
                         .attr("class", "volume axis");
                 svg.append("g")
@@ -192,12 +205,28 @@ function loadJSON(file, type) {
                         .attr("y", -10)
                         .style("text-anchor", "end")
                         .text("Price (TWD)");
+                svg.append("g")
+                        .attr("class", "tradearrow");
                 // Data to display initially
 
-                start = 0
-                end = data.length;
-                //     end = 500
-                draw(data.slice(start, end), newData.slice(start, end));
+                // start = 0
+                // end = data.length;
+                data = data.filter(function(value) {//k棒
+                        return  date_start <= value.date && value.date <= date_end ;
+                      });
+                newData = newData.filter(function(value) {//成交量
+                        return  date_start <= value.date && value.date <= date_end ;
+                });
+                
+                dataMaArr = dataMaArr_o.filter(function(value) {//MA數字資料
+                        return  date_start <= parseDate(value['交易日期']) && parseDate(value['交易日期']) <= date_end ;
+                });
+                
+                dataBuySellArr = dataBuySellArr_o.filter(function(value) {//MA數字資料
+                        return  date_start <= parseDate(value['交易日期']) && parseDate(value['交易日期']) <= date_end ;
+                });
+                // draw(data.slice(start, end), newData.slice(start, end));
+                draw(data, newData);
 
         });
 }
@@ -223,12 +252,52 @@ function draw(data, volumeData) {
                 // {date : null,value:null},
 
         ]
-        var trades = [
-                // { date: data[1].date, type: "buy", price: 10000, low: data[1].low, high: data[1].high },
-                // { date: data[7].date, type: "sell", price: 11000, low: data[7].low, high: data[7].high },
-                // { date: data[11].date, type: "buy", price: 12345, low: data[11].low, high: data[11].high },
-                // { date: data[18].date, type: "sell", price: 12000, low: data[18].low, high: data[18].high }
-        ];
+
+        
+
+
+        var trades = dataBuySellArr.map(function (d) {
+                return {
+                        date: parseDate(d["交易日期"]),
+                        type: d["買賣"].trim(),
+                        price: parseInt(d["價格"]),
+                }
+        });
+        var get_line = [];
+        var loss_line = [];
+        var temp = [];
+        dataBuySellArr.forEach(function (d) {
+                temp.push(d)
+                if(d["收益"] > 0){
+                        temp.push({date:null,value:0});
+                        get_line = get_line.concat(temp);
+                        temp = [];
+                }
+                if(d["收益"] < 0){
+                        temp.push({date:null,value:0});
+                        loss_line = loss_line.concat(temp);
+                        temp = []
+                }
+        });
+        
+        var get_line = get_line.map(function (d) {
+                return {
+                        date: parseDate(d["交易日期"]) ?? null,
+                        value: d["價格"] === undefined ? null: parseInt(d["價格"])
+                }
+        });
+        var loss_line = loss_line.map(function (d) {
+                return {
+                        date: parseDate(d["交易日期"]) ?? null,
+                        value: d["價格"] === undefined ? null: parseInt(d["價格"]),
+                }
+        });
+        console.log(get_line);
+        console.log(loss_line);
+        svg.select("g.sma.ma-c.get").attr("clip-path", "url(#candlestickClip)").datum(get_line).call(sma0);//賺線
+        svg.select("g.sma.ma-c.loss").attr("clip-path", "url(#candlestickClip)").datum(loss_line).call(sma0);//賠線
+
+
         // Add a clipPath: everything out of this area won't be drawn.
         var clip = svg.append("defs").append("svg:clipPath")
                 .attr("id", "clip")
@@ -291,7 +360,6 @@ function draw(data, volumeData) {
         //     console.log(data);
         //     console.log(testData);
         //     console.log(techan.indicator.sma().period(50)(data));//重要
-        svg.select("g.sma.ma-c").attr("clip-path", "url(#candlestickClip)").datum(testData).call(sma0);
         svg.select("g.sma.ma-0").attr("clip-path", "url(#candlestickClip)").datum(techan.indicator.sma().period(5)(data)).call(sma0);
         svg.select("g.sma.ma-1").attr("clip-path", "url(#candlestickClip)").datum(techan.indicator.sma().period(10)(data)).call(sma0);
         svg.select("g.ema.ma-2").attr("clip-path", "url(#candlestickClip)").datum(techan.indicator.sma().period(20)(data)).call(sma0);
@@ -317,7 +385,11 @@ function move(coords, index) {
         var i;
         for (i = 0; i < dataArr.length; i++) {
                 if (coords.x === dataArr[i].date) {
-                        svgText.text(d3.timeFormat("%Y/%m/%d")(coords.x) + ", 開盤：" + dataArr[i].open + ", 高：" + dataArr[i].high + ", 低：" + dataArr[i].low + ", 收盤：" + dataArr[i].close + ", 漲跌：" + dataArr[i].change + "(" + dataArr[i].percentChange + "%)" + ", 成交量：" + dataArr[i].volume);
+                        svgText.text(d3.timeFormat("%Y/%m/%d")(coords.x) + "【開盤：" + dataArr[i].open + "】【高：" + dataArr[i].high + "】【低：" + dataArr[i].low + "】【收盤：" + dataArr[i].close + 
+                        "】【漲跌：" + dataArr[i].change + "(" + dataArr[i].percentChange + "%)" + "】【成交量：" + dataArr[i].volume + 
+                        "】【5MA：" + dataMaArr[i]["5MA"] + "】【10MA：" + dataMaArr[i]["10MA"] + "】【20MA：" + dataMaArr[i]["20MA"] + "】【60MA：" + dataMaArr[i]["60MA"]+"】"
+                        ) 
+                        ;
                 }
         }
 }
@@ -354,9 +426,10 @@ function redraw() {
         svg.select("g.candlestick").call(candlestick);
         svg.select("g.x.axis").call(xAxis);
         svg.select("g.y.axis").call(yAxis);
-        svg.select("g.sma.ma-c").call(smac);
-        svg.select("g.sma.ma-0").call(sma0);
-        svg.select("g.sma.ma-1").call(sma1);
+        svg.select("g.sma.ma-c.get").call(smac);
+        svg.select("g.sma.ma-c.loss").call(smac);
+        // svg.select("g.sma.ma-0").call(sma0);
+        // svg.select("g.sma.ma-1").call(sma1);
         svg.select("g.ema.ma-2").call(ema2);
         svg.select("g.tradearrow").call(tradearrow);
 

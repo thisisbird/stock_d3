@@ -19,9 +19,9 @@ func main() {
 		"2014_fut.csv", "2015_fut.csv", "2016_fut.csv", "2017_fut.csv",
 		"2018_fut.csv", "2019_fut.csv", "2020_fut.csv",
 	}
-
+	allFileName = []string{"01.csv","02.csv","03.csv","04.csv"}
 	for _, fileName := range allFileName {
-		fileName = "o_data/"+fileName
+		fileName = "o_data/2021/" + fileName
 		readCSV(fileName)
 	}
 
@@ -36,22 +36,15 @@ func readCSV(fileName string) {
 	options := os.O_WRONLY | os.O_APPEND | os.O_CREATE //開啟檔案的選項
 	file2, err := os.OpenFile("new.csv", options, os.FileMode(0600))
 	check(err)
-	// i := 0
 	for scanner.Scan() {
-		// if i < 0 {
-		// 	_, err = fmt.Fprintln(file2, scanner.Text())
-		// 	check(err)
-		// 	i++
-		// 	continue
-		// }
 		sli := strings.Split(scanner.Text(), ",")
 		if len(sli) > 1 {
-			ok:=false
-			if(len(sli) < 18){
-				ok= true
-			}else{
-				if(sli[17] == "一般"){
-					ok=true
+			ok := false
+			if len(sli) < 18 {
+				ok = true
+			} else {
+				if sli[17] == "一般" {
+					ok = true
 				}
 			}
 			if sli[1] == "MTX" && ok {
@@ -112,7 +105,11 @@ func finalDay(sli string) string {
 	}
 	gg := ""
 	if day <= final {
-		gg = a[0] + a[1]
+		if month < 10 {
+			gg = a[0] + "0" + strconv.Itoa(month)
+		} else {
+			gg = a[0] + a[1]
+		}
 	} else {
 		if month+1 < 10 {
 			gg = a[0] + "0" + strconv.Itoa(month+1)

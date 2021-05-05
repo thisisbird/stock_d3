@@ -1,13 +1,15 @@
 body {
+        background-color: rgba(0, 0, 0, 0.749);
+        color: blanchedalmond;
         font: 13px sans-serif;
     }
 
 text {
-    fill: #000;
+    fill: rgb(242, 239, 239);
 }
 
 path.candle {
-    stroke: #000000;
+    stroke: #f7f7f7;
 }
 
 path.candle.body {
@@ -42,10 +44,17 @@ path.volume.equal {
 }
 
 .ma-c path.line {
-    stroke: #ff00d9;
     fill: none;
     stroke-width: 2;
+    stroke-dasharray: 10,10;
 }
+.ma-c.get path.line{
+    stroke: #7def0b;
+}
+.ma-c.loss path.line{
+    stroke: #ff0000;
+}
+
 
 .ma-0 path.line {
     stroke: #1f77b4;
@@ -65,12 +74,12 @@ path.volume.equal {
 
 .x.axis line {
     fill: none;
-    stroke: rgba(0,0,0,0.1);
+    stroke: rgba(255, 255, 255, 0.1);
 }
 
 .y.axis line {
     fill: none;
-    stroke: rgba(0,0,0,0.1);
+    stroke: rgba(255, 255, 255, 0.1);
 }
 
 .crosshair {
@@ -79,12 +88,12 @@ path.volume.equal {
 
 .crosshair path.wire {
     
-    stroke: #797979;
+    stroke: #984949;
     stroke-dasharray: 1, 1;
 }
 
 .crosshair .axisannotation path {
-    fill: #DDDDDD;
+    fill: #000000;
 }
 
 
