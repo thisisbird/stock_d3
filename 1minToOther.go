@@ -3,7 +3,9 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"html/template"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -11,14 +13,44 @@ import (
 
 var timeMap = map[string]string{}
 var startTime = "08:45"
-var minK = 300
+var minK = 60
 
 func main() {
+	http.HandleFunc("/kline", viewHandler)
+	http.HandleFunc("/kline/new", newHandler)
+	http.HandleFunc("/kline/create", createHandler)
+	// http.Handle("/Candlestick", http.FileServer(http.Dir("/Users/zhangkaijun/Desktop/golang/stock/Candlestick")))
+	http.Handle("/graph/", http.StripPrefix("/graph/", http.FileServer(http.Dir("./Candlestick"))))
+	err := http.ListenAndServe("localhost:8080", nil)
+	log.Fatal(err)
+
+}
+
+func createCSV() {
 	timeMap = timeMapping(startTime, minK)
 	finaFilelName := startTime + "_" + strconv.Itoa(minK) + "min.csv"
 	fileName := "TXF1-分鐘-成交價.txt"
 	fileName = "o_data/kevin/" + fileName
 	readCSV(fileName, finaFilelName)
+}
+
+func viewHandler(writer http.ResponseWriter, request *http.Request) {
+	html, err := template.ParseFiles("view.html")
+	check(err)
+	err = html.Execute(writer, 123)
+	check(err)
+}
+func newHandler(writer http.ResponseWriter, request *http.Request) {
+	html, err := template.ParseFiles("new.html")
+	check(err)
+	err = html.Execute(writer, nil)
+	check(err)
+}
+func createHandler(writer http.ResponseWriter, request *http.Request) {
+	startTime = request.FormValue("start")
+	minK, _ = strconv.Atoi(request.FormValue("count"))
+	createCSV()
+	http.Redirect(writer, request, "/kline", http.StatusFound) //導回某頁(放在writer.Write底下沒作用)
 }
 
 /**
@@ -36,7 +68,6 @@ func readCSV(fileName string, finaFilelName string) {
 	file2, err := os.OpenFile(finaFilelName, options, os.FileMode(0600))
 	check(err)
 	date := ""
-	time := ""
 	finalTime := ""
 	o := 0
 	h := 0
@@ -62,9 +93,8 @@ func readCSV(fileName string, finaFilelName string) {
 				check(err)
 			}
 
-			date = sli[0]             //會直接執行下方條件
-			time = sli[1]             //會直接執行下方條件
-			finalTime = timeMap[time] //會直接執行下方條件
+			date = sli[0]               //會直接執行下方條件
+			finalTime = timeMap[sli[1]] //會直接執行下方條件
 
 			oo, _ := strconv.ParseFloat(sli[2], 64)
 			cc, _ := strconv.ParseFloat(sli[5], 64)
@@ -132,13 +162,16 @@ func timeMapping(start string, count int) map[string]string {
 			finalTime = timePlus(finalTime, count)
 		}
 		time := timePlus(start, i)
+		if time == "" {
+			continue
+		}
+
 		data[time] = finalTime
 
 		if time == "13:45:00" {
 			break
 		}
 	}
-
 	return data
 }
 
@@ -150,6 +183,9 @@ func timePlus(time string, plus int) string {
 	min = totalMin % 60
 	hourPlus := totalMin / 60
 	hour += hourPlus
+	if hour == 8 && min <= 45 {
+		return ""
+	}
 	return intTOString(hour) + ":" + intTOString(min) + ":00"
 }
 
