@@ -28,8 +28,9 @@ func main() {
 func createCSV() {
 	timeMap = timeMapping(startTime, minK)
 	finaFilelName := startTime + "_" + strconv.Itoa(minK) + "min.csv"
+	finaFilelName = "public/data/" + finaFilelName
 	fileName := "TXF1-分鐘-成交價.txt"
-	fileName = "o_data/kevin/TXF1-分鐘-成交價.txt" + fileName
+	fileName = "o_data/kevin/" + fileName
 	readCSV(fileName, finaFilelName)
 }
 

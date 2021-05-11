@@ -9,15 +9,95 @@
         <button onclick="javascript:location.href='../kline'">Back</button>
         <p class="info">個股資訊： 小台指</p>
         <p>K線圖</p>
-        <p>深藍線: 5MA</p>
-        <p>淺藍線: 10MA</p>
-        <p>橘線：  20MA</p>
+        
+        <p>深藍線: 5MA<button onclick="MA(5)">開關</button></p>
+        <p>淺藍線: 10MA<button onclick="MA(10)">開關</button></p>
+        <p>橘線：  20MA<button onclick="MA(20)">開關</button></p>
         <p>下方Bar: 成交量</p>
         <!-- <button onclick="loadJSON('https://raw.githubusercontent.com/CyuanChen/d3.js-practice/master/Candlestick3/data.json', 'date')">亞泥日線</button> -->
         <!-- <button onclick="loadJSON('https://raw.githubusercontent.com/CyuanChen/d3.js-practice/master/Candlestick3/monthData.json', 'monthDate')">亞泥月線</button> -->
-        <input type="text" id="start" value="202101">
-        <input type="text" id="end" value="202104">
-        <button onclick="loadJSON('new.csv','ma.csv','buyAndSell.csv', 'date')">小台指</button>
+        開始：
+        <select id="start_year">
+            <option value="1999">1999</option>
+            <option value="2000">2000</option>
+            <option value="2001">2001</option>
+            <option value="2002">2002</option>
+            <option value="2003">2003</option>
+            <option value="2004">2004</option>
+            <option value="2005">2005</option>
+            <option value="2006">2006</option>
+            <option value="2007">2007</option>
+            <option value="2008">2008</option>
+            <option value="2009">2009</option>
+            <option value="2010">2010</option>
+            <option value="2011">2011</option>
+            <option value="2012">2012</option>
+            <option value="2013">2013</option>
+            <option value="2014">2014</option>
+            <option value="2015">2015</option>
+            <option value="2016">2016</option>
+            <option value="2017">2017</option>
+            <option value="2018">2018</option>
+            <option value="2019">2019</option>
+            <option value="2020" selected>2020</option>
+            <option value="2020">2021</option>
+        </select>
+        <select id="start_month">
+            <option value="01">1</option>
+            <option value="02">2</option>
+            <option value="03">3</option>
+            <option value="04">4</option>
+            <option value="05">5</option>
+            <option value="06">6</option>
+            <option value="07">7</option>
+            <option value="08">8</option>
+            <option value="09">9</option>
+            <option value="10">10</option>
+            <option value="11">11</option>
+            <option value="12">12</option>
+        </select>
+        <br>
+        結束：
+        <select id="end_year">
+            <option value="1999">1999</option>
+            <option value="2000">2000</option>
+            <option value="2001">2001</option>
+            <option value="2002">2002</option>
+            <option value="2003">2003</option>
+            <option value="2004">2004</option>
+            <option value="2005">2005</option>
+            <option value="2006">2006</option>
+            <option value="2007">2007</option>
+            <option value="2008">2008</option>
+            <option value="2009">2009</option>
+            <option value="2010">2010</option>
+            <option value="2011">2011</option>
+            <option value="2012">2012</option>
+            <option value="2013">2013</option>
+            <option value="2014">2014</option>
+            <option value="2015">2015</option>
+            <option value="2016">2016</option>
+            <option value="2017">2017</option>
+            <option value="2018">2018</option>
+            <option value="2019">2019</option>
+            <option value="2020">2020</option>
+            <option value="2021" selected>2021</option>
+        </select>
+        <select id="end_month">
+            <option value="01">1</option>
+            <option value="02">2</option>
+            <option value="03">3</option>
+            <option value="04">4</option>
+            <option value="05">5</option>
+            <option value="06">6</option>
+            <option value="07">7</option>
+            <option value="08">8</option>
+            <option value="09">9</option>
+            <option value="10">10</option>
+            <option value="11">11</option>
+            <option value="12" selected>12</option>
+        </select>
+        <button onclick="loadJSON('08:45_60min.csv','ma.csv','buyAndSell.csv', 'date')">小台指</button>
     <script src="https://d3js.org/d3.v4.min.js"></script>
     <script src="techanjs.js"></script>
     <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js' integrity='sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ==' crossorigin='anonymous'></script>

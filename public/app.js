@@ -1,9 +1,11 @@
 var margin = { top: 20, right: 50, bottom: 30, left: 60 },
         width = 1300 - margin.left - margin.right,
-        height = 500 - margin.top - margin.bottom;
+        height = 1000 - margin.top - margin.bottom;
 
 // 設定時間格式
 var parseDate = d3.timeParse("%Y/%m/%d");
+var parseTime = d3.timeParse("%H:%M:%S");
+var parseDateTime = d3.timeParse("%Y/%m/%d %H:%M:%S");
 // var parseDate = d3.timeParse("%Y%m%d");
 var monthDate = d3.timeParse("%Y%m");
 
@@ -74,7 +76,7 @@ var ohlcAnnotation = techan.plot.axisannotation()
 var timeAnnotation = techan.plot.axisannotation()
         .axis(xAxis)
         .orient('bottom')
-        .format(d3.timeFormat('%Y-%m-%d'))
+        .format(d3.timeFormat('%Y-%m-%d %H:%M'))
         .translate([0, height]);
 
 // 設定十字線
@@ -113,11 +115,14 @@ var svg = d3.select("body")
 var dataArr;
 var dataMaArr_o;
 var dataBuySellArr_o;
-loadJSON("new.csv", "ma.csv","buyAndSell.csv","date");
+var path = "data/";
+var g_data;
+loadJSON("08:45_60min.csv", "ma.csv", "buyAndSell.csv", "date");
 
-function loadJSON(file,file2,file3 , type) {
-        var date_start = $('#start').val();
-        var date_end = $('#end').val();
+
+function loadJSON(file, file2, file3, type) {
+        var date_start = $('#start_year').val() + $('#start_month').val();
+        var date_end = $('#end_year').val() + $('#end_month').val();
         date_start = monthDate(date_start)
         date_end = monthDate(date_end)
         date_end.setMonth(date_end.getMonth() + 1)
@@ -128,58 +133,31 @@ function loadJSON(file,file2,file3 , type) {
         d3.csv(file3, function (error, data) {
                 dataBuySellArr_o = data;//匯入買賣資料
         });
-        d3.csv(file, function (error, data) {
+        d3.csv(path + file, function (error, data) {
                 var accessor = candlestick.accessor();
                 var jsonData = data;
 
-                data =
-                        jsonData
-                                .map(function (d) { // 設定data的格式
-                                        if (type == "date") {
-                                                return {
-                                                        date: parseDate(d["交易日期"]),
-                                                        open: +d["開盤價"],
-                                                        high: +d["最高價"],
-                                                        low: +d["最低價"],
-                                                        close: +d["收盤價"],
-                                                        volume: +d["成交量"],
-                                                        change: +d["漲跌價"],
-                                                        percentChange: +d["漲跌%"].replace('%', ''),
-                                                };
-                                        } else {
-                                                return {
-                                                        date: monthDate(d[0]),
-                                                        open: +d[3],
-                                                        high: +d[4],
-                                                        low: +d[5],
-                                                        close: +d[6],
-                                                        volume: +d[10],
-                                                        change: +d[7],
-                                                        percentChange: +d[8],
-                                                };
-                                        }
-
-                                }).sort(function (a, b) { return d3.ascending(accessor.d(a), accessor.d(b)); });
-
+                data = jsonData.map(function (d) { // 設定data的格式
+                        return {
+                                date: parseDateTime(d["Date"] + ' ' + d["Time"]),
+                                open: +d["Open"],
+                                high: +d["High"],
+                                low: +d["Low"],
+                                close: +d["Close"],
+                                volume: +d["TotalVolume"]
+                        };
+                }).sort(function (a, b) { return d3.ascending(accessor.d(a), accessor.d(b)); });
 
 
                 var newData = jsonData.map(function (d) {
-                        if (type == "date") {
-                                return {
-                                        date: parseDate(d["交易日期"]),
-                                        volume: d["成交量"]
-                                }
-                        } else {
-                                return {
-                                        date: monthDate(d[0]),
-                                        volume: d[10]
-                                }
+                        return {
+                                date: parseDateTime(d["Date"] + ' ' + d["Time"]),
+                                volume: d["TotalVolume"]
                         }
-
                 });
                 //     .reverse();
 
-               
+
 
                 svg.append("g")
                         .attr("class", "candlestick");
@@ -187,12 +165,12 @@ function loadJSON(file,file2,file3 , type) {
                         .attr("class", "sma ma-c get");
                 svg.append("g")
                         .attr("class", "sma ma-c loss");
-                // svg.append("g")
-                //         .attr("class", "sma ma-0");
-                // svg.append("g")
-                //         .attr("class", "sma ma-1");
-                // svg.append("g")
-                //         .attr("class", "ema ma-2");
+                svg.append("g")
+                        .attr("class", "sma ma-0");
+                svg.append("g")
+                        .attr("class", "sma ma-1");
+                svg.append("g")
+                        .attr("class", "ema ma-2");
                 svg.append("g")
                         .attr("class", "volume axis");
                 svg.append("g")
@@ -211,19 +189,19 @@ function loadJSON(file,file2,file3 , type) {
 
                 // start = 0
                 // end = data.length;
-                data = data.filter(function(value) {//k棒
-                        return  date_start <= value.date && value.date <= date_end ;
-                      });
-                newData = newData.filter(function(value) {//成交量
-                        return  date_start <= value.date && value.date <= date_end ;
+                data = data.filter(function (value) {//k棒
+                        return date_start <= value.date && value.date <= date_end;
                 });
-                
-                dataMaArr = dataMaArr_o.filter(function(value) {//MA數字資料
-                        return  date_start <= parseDate(value['交易日期']) && parseDate(value['交易日期']) <= date_end ;
+                newData = newData.filter(function (value) {//成交量
+                        return date_start <= value.date && value.date <= date_end;
                 });
-                
-                dataBuySellArr = dataBuySellArr_o.filter(function(value) {//MA數字資料
-                        return  date_start <= parseDate(value['交易日期']) && parseDate(value['交易日期']) <= date_end ;
+
+                dataMaArr = dataMaArr_o.filter(function (value) {//MA數字資料
+                        return date_start <= parseDate(value['交易日期']) && parseDate(value['交易日期']) <= date_end;
+                });
+
+                dataBuySellArr = dataBuySellArr_o.filter(function (value) {//MA數字資料
+                        return date_start <= parseDate(value['交易日期']) && parseDate(value['交易日期']) <= date_end;
                 });
                 // draw(data.slice(start, end), newData.slice(start, end));
                 draw(data, newData);
@@ -253,7 +231,7 @@ function draw(data, volumeData) {
 
         ]
 
-        
+
 
 
         var trades = dataBuySellArr.map(function (d) {
@@ -268,32 +246,32 @@ function draw(data, volumeData) {
         var temp = [];
         dataBuySellArr.forEach(function (d) {
                 temp.push(d)
-                if(d["收益"] > 0){
-                        temp.push({date:null,value:0});
+                if (d["收益"] > 0) {
+                        temp.push({ date: null, value: 0 });
                         get_line = get_line.concat(temp);
                         temp = [];
                 }
-                if(d["收益"] < 0){
-                        temp.push({date:null,value:0});
+                if (d["收益"] < 0) {
+                        temp.push({ date: null, value: 0 });
                         loss_line = loss_line.concat(temp);
                         temp = []
                 }
         });
-        
+
         var get_line = get_line.map(function (d) {
                 return {
                         date: parseDate(d["交易日期"]) ?? null,
-                        value: d["價格"] === undefined ? null: parseInt(d["價格"])
+                        value: d["價格"] === undefined ? null : parseInt(d["價格"])
                 }
         });
         var loss_line = loss_line.map(function (d) {
                 return {
                         date: parseDate(d["交易日期"]) ?? null,
-                        value: d["價格"] === undefined ? null: parseInt(d["價格"]),
+                        value: d["價格"] === undefined ? null : parseInt(d["價格"]),
                 }
         });
-        console.log(get_line);
-        console.log(loss_line);
+        // console.log(get_line);
+        // console.log(loss_line);
         svg.select("g.sma.ma-c.get").attr("clip-path", "url(#candlestickClip)").datum(get_line).call(sma0);//賺線
         svg.select("g.sma.ma-c.loss").attr("clip-path", "url(#candlestickClip)").datum(loss_line).call(sma0);//賠線
 
@@ -360,6 +338,7 @@ function draw(data, volumeData) {
         //     console.log(data);
         //     console.log(testData);
         //     console.log(techan.indicator.sma().period(50)(data));//重要
+        g_data = data
         svg.select("g.sma.ma-0").attr("clip-path", "url(#candlestickClip)").datum(techan.indicator.sma().period(5)(data)).call(sma0);
         svg.select("g.sma.ma-1").attr("clip-path", "url(#candlestickClip)").datum(techan.indicator.sma().period(10)(data)).call(sma0);
         svg.select("g.ema.ma-2").attr("clip-path", "url(#candlestickClip)").datum(techan.indicator.sma().period(20)(data)).call(sma0);
@@ -385,11 +364,9 @@ function move(coords, index) {
         var i;
         for (i = 0; i < dataArr.length; i++) {
                 if (coords.x === dataArr[i].date) {
-                        svgText.text(d3.timeFormat("%Y/%m/%d")(coords.x) + "【開盤：" + dataArr[i].open + "】【高：" + dataArr[i].high + "】【低：" + dataArr[i].low + "】【收盤：" + dataArr[i].close + 
-                        "】【漲跌：" + dataArr[i].change + "(" + dataArr[i].percentChange + "%)" + "】【成交量：" + dataArr[i].volume + 
-                        "】【5MA：" + dataMaArr[i]["5MA"] + "】【10MA：" + dataMaArr[i]["10MA"] + "】【20MA：" + dataMaArr[i]["20MA"] + "】【60MA：" + dataMaArr[i]["60MA"]+"】"
-                        ) 
-                        ;
+                        svgText.text(d3.timeFormat("%Y/%m/%d %H:%M")(coords.x) + "【開盤：" + dataArr[i].open + "】【高：" + dataArr[i].high + "】【低：" + dataArr[i].low + "】【收盤：" + dataArr[i].close +
+                                "】【成交量：" + dataArr[i].volume + "】"
+                        );
                 }
         }
 }
@@ -399,7 +376,7 @@ var t;
 function zoomed() {
 
         //根據zoom去取得座標轉換的資料
-        t = d3.event.transform;
+        // t = d3.event.transform;
         rescaledX = d3.event.transform.rescaleY(x);
         rescaledY = d3.event.transform.rescaleY(y);
         // y座標zoom
@@ -429,8 +406,8 @@ function redraw() {
         svg.select("g.y.axis").call(yAxis);
         svg.select("g.sma.ma-c.get").call(smac);
         svg.select("g.sma.ma-c.loss").call(smac);
-        // svg.select("g.sma.ma-0").call(sma0);
-        // svg.select("g.sma.ma-1").call(sma1);
+        svg.select("g.sma.ma-0").call(sma0);
+        svg.select("g.sma.ma-1").call(sma1);
         svg.select("g.ema.ma-2").call(ema2);
         svg.select("g.tradearrow").call(tradearrow);
 
@@ -439,6 +416,26 @@ function redraw() {
                 .attr("width", (xScale.bandwidth()));
 }
 
+function MA(k) {
+        if (k == 5) {
+                MAname = "g.sma.ma-0";
+                MAname2 = "sma ma-0";
+        }
+        if (k == 10) {
+                MAname = "g.sma.ma-1";
+                MAname2 = "sma ma-1";
+        }
+        if (k == 20) {
+                MAname = "g.ema.ma-2";
+                MAname2 = "ema ma-2";
+        }
+        if (svg.select(MAname).size()) {
+                svg.select(MAname).remove();
+        } else {
+                svg.append("g").attr("class", MAname2);
+                svg.select(MAname).attr("clip-path", "url(#candlestickClip)").datum(techan.indicator.sma().period(k)(g_data)).call(sma0);
+        }
+}
 
 
 
