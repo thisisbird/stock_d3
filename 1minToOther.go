@@ -19,8 +19,7 @@ func main() {
 	http.HandleFunc("/kline", viewHandler)
 	http.HandleFunc("/kline/new", newHandler)
 	http.HandleFunc("/kline/create", createHandler)
-	// http.Handle("/Candlestick", http.FileServer(http.Dir("/Users/zhangkaijun/Desktop/golang/stock/Candlestick")))
-	http.Handle("/graph/", http.StripPrefix("/graph/", http.FileServer(http.Dir("./Candlestick"))))
+	http.Handle("/graph/", http.StripPrefix("/graph/", http.FileServer(http.Dir("./public"))))
 	err := http.ListenAndServe("localhost:8080", nil)
 	log.Fatal(err)
 
@@ -30,14 +29,14 @@ func createCSV() {
 	timeMap = timeMapping(startTime, minK)
 	finaFilelName := startTime + "_" + strconv.Itoa(minK) + "min.csv"
 	fileName := "TXF1-分鐘-成交價.txt"
-	fileName = "o_data/kevin/" + fileName
+	fileName = "o_data/kevin/TXF1-分鐘-成交價.txt" + fileName
 	readCSV(fileName, finaFilelName)
 }
 
 func viewHandler(writer http.ResponseWriter, request *http.Request) {
 	html, err := template.ParseFiles("view.html")
 	check(err)
-	err = html.Execute(writer, 123)
+	err = html.Execute(writer, nil)
 	check(err)
 }
 func newHandler(writer http.ResponseWriter, request *http.Request) {
