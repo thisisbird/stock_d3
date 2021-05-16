@@ -27,7 +27,7 @@ func main() {
 
 func createCSV() {
 	timeMap = timeMapping(startTime, minK)
-	finaFilelName := startTime + "_" + strconv.Itoa(minK) + "min.csv"
+	finaFilelName := strings.Replace(startTime, ":", "", 1) + "_" + strconv.Itoa(minK) + "min.csv"
 	finaFilelName = "public/data/" + finaFilelName
 	fileName := "TXF1-分鐘-成交價.txt"
 	fileName = "o_data/kevin/" + fileName
@@ -112,7 +112,7 @@ func readCSV(fileName string, finaFilelName string) {
 			l = min(l, int(ll))
 			v += vv
 		}
-		if finalTime == sli[1] {
+		if finalTime == sli[1] || sli[1] == "13:45:00"{
 			cc, _ := strconv.ParseFloat(sli[5], 64)
 			c = int(cc) //取最後一根的收
 		}

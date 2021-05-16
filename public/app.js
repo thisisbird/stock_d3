@@ -1,3 +1,14 @@
+//讀取資料列表
+file_index = "data/index.csv";
+var list_index;
+d3.csv(file_index, function (error, data) {
+        list_index = data;
+        data.forEach(function (v,i) {
+                $("#list").append(`<button onclick="loadJSON('${v.filename}','ma.csv','buyAndSell.csv', 'date')">${v.filename}</button>`);
+        });
+});
+
+
 var margin = { top: 20, right: 50, bottom: 30, left: 60 },
         width = 1300 - margin.left - margin.right,
         height = 1000 - margin.top - margin.bottom;
@@ -112,12 +123,12 @@ var svg = d3.select("body")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
 
-var dataArr;
-var dataMaArr_o;
-var dataBuySellArr_o;
+var dataArr = [];
+var dataMaArr_o = [];
+var dataBuySellArr_o = [];
 var path = "data/";
 var g_data;
-loadJSON("08:45_60min.csv", "ma.csv", "buyAndSell.csv", "date");
+// loadJSON("08:45_60min.csv", "ma.csv", "buyAndSell.csv", "date");
 
 
 function loadJSON(file, file2, file3, type) {
@@ -130,6 +141,7 @@ function loadJSON(file, file2, file3, type) {
         d3.csv(file2, function (error, data) {
                 dataMaArr_o = data;//匯入ma資料
         });
+
         d3.csv(file3, function (error, data) {
                 dataBuySellArr_o = data;//匯入買賣資料
         });
