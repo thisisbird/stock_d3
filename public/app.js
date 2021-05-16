@@ -1,4 +1,4 @@
-//讀取資料列表
+//讀取資料列表-動態產生按鈕
 file_index = "data/index.csv";
 var list_index;
 d3.csv(file_index, function (error, data) {
@@ -123,11 +123,14 @@ var svg = d3.select("body")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
 
-var dataArr = [];
+// var dataArr = [];
 var dataMaArr_o = [];
 var dataBuySellArr_o = [];
+var g_data = [];//日期篩選後的k棒
+var g_volumeData = [];//日期篩選後的量
 var path = "data/";
-var g_data;
+
+
 // loadJSON("08:45_60min.csv", "ma.csv", "buyAndSell.csv", "date");
 
 
@@ -142,7 +145,7 @@ function loadJSON(file, file2, file3, type) {
                 dataMaArr_o = data;//匯入ma資料
         });
 
-        d3.csv(file3, function (error, data) {
+        d3.csv(path + file3, function (error, data) {
                 dataBuySellArr_o = data;//匯入買賣資料
         });
         d3.csv(path + file, function (error, data) {
@@ -161,7 +164,7 @@ function loadJSON(file, file2, file3, type) {
                 }).sort(function (a, b) { return d3.ascending(accessor.d(a), accessor.d(b)); });
 
 
-                var newData = jsonData.map(function (d) {
+                var volumeData = jsonData.map(function (d) {
                         return {
                                 date: parseDateTime(d["Date"] + ' ' + d["Time"]),
                                 volume: d["TotalVolume"]
@@ -201,10 +204,10 @@ function loadJSON(file, file2, file3, type) {
 
                 // start = 0
                 // end = data.length;
-                data = data.filter(function (value) {//k棒
+                g_data = data.filter(function (value) {//k棒
                         return date_start <= value.date && value.date <= date_end;
                 });
-                newData = newData.filter(function (value) {//成交量
+                g_volumeData = volumeData.filter(function (value) {//成交量
                         return date_start <= value.date && value.date <= date_end;
                 });
 
@@ -215,35 +218,19 @@ function loadJSON(file, file2, file3, type) {
                 dataBuySellArr = dataBuySellArr_o.filter(function (value) {//MA數字資料
                         return date_start <= parseDate(value['交易日期']) && parseDate(value['交易日期']) <= date_end;
                 });
-                // draw(data.slice(start, end), newData.slice(start, end));
-                draw(data, newData);
-
+                // draw(data.slice(start, end), g_volumeData.slice(start, end));
+                draw();
         });
 }
 
 
 
-function draw(data, volumeData) {
+function draw() {
         // 設定domain，決定各座標所用到的資料
-        x.domain(data.map(candlestick.accessor().d));
-        y.domain(techan.scale.plot.ohlc(data, candlestick.accessor()).domain());
-        xScale.domain(volumeData.map(function (d) { return d.date; }))
-        yVolume.domain(techan.scale.plot.volume(data).domain());
-
-        var testData = [
-                // {date : parseDate('2020/11/07'),value:10000,type:'buy'},
-                // {date : parseDate('2020/11/09'),value:12000,type:'buy'},
-                // {date : null,value:null},
-                // {date : parseDate('2020/12/03'),value:12000,type:'sell'},
-                // {date : parseDate('2020/12/01'),value:10000,type:'sell'},
-                // {date : null,value:null},
-                // {date : parseDate('2020/01/09'),value:14000,type:'sell'},
-                // {date : parseDate('2020/01/21'),value:11000,type:'sell'},
-                // {date : null,value:null},
-
-        ]
-
-
+        x.domain(g_data.map(candlestick.accessor().d));
+        y.domain(techan.scale.plot.ohlc(g_data, candlestick.accessor()).domain());
+        xScale.domain(g_volumeData.map(function (d) { return d.date; }))
+        yVolume.domain(techan.scale.plot.volume(g_data).domain());
 
 
         var trades = dataBuySellArr.map(function (d) {
@@ -308,7 +295,7 @@ function draw(data, volumeData) {
         xScale.range([0, width].map(d => d)); // 設定xScale回到初始值
         var chart = svg.selectAll("volumeBar") // 畫成交量bar chart
                 .append("g")
-                .data(volumeData)
+                .data(g_volumeData)
                 .enter().append("g")
                 .attr("clip-path", "url(#clip)");
 
@@ -324,9 +311,9 @@ function draw(data, volumeData) {
                 })
                 .attr("width", xScale.bandwidth())
                 .style("fill", function (d, i) { // 根據漲跌幅去決定成交量的顏色
-                        if (data[i].change > 0) {
+                        if (g_data[i].change > 0) {
                                 return "#FF0000"
-                        } else if (data[i].change < 0) {
+                        } else if (g_data[i].change < 0) {
                                 return "#00AA00"
                         } else {
                                 return "#DDDDDD"
@@ -342,18 +329,18 @@ function draw(data, volumeData) {
         //畫Ｋ線圖
         var state = svg.selectAll("g.candlestick")
                 .attr("clip-path", "url(#candlestickClip)")
-                .datum(data);
-        state.call(candlestick)
-                .each(function (d) {
-                        dataArr = d;
-                });
-        //     console.log(data);
-        //     console.log(testData);
-        //     console.log(techan.indicator.sma().period(50)(data));//重要
-        g_data = data
-        svg.select("g.sma.ma-0").attr("clip-path", "url(#candlestickClip)").datum(techan.indicator.sma().period(5)(data)).call(sma0);
-        svg.select("g.sma.ma-1").attr("clip-path", "url(#candlestickClip)").datum(techan.indicator.sma().period(10)(data)).call(sma0);
-        svg.select("g.ema.ma-2").attr("clip-path", "url(#candlestickClip)").datum(techan.indicator.sma().period(20)(data)).call(sma0);
+                .datum(g_data);
+
+        state.call(candlestick);
+        //         .each(function (d) {
+        //                 dataArr = d;
+        //         });
+
+
+  
+        svg.select("g.sma.ma-0").attr("clip-path", "url(#candlestickClip)").datum(techan.indicator.sma().period(5)(g_data)).call(sma0);
+        svg.select("g.sma.ma-1").attr("clip-path", "url(#candlestickClip)").datum(techan.indicator.sma().period(10)(g_data)).call(sma0);
+        svg.select("g.ema.ma-2").attr("clip-path", "url(#candlestickClip)").datum(techan.indicator.sma().period(20)(g_data)).call(sma0);
         svg.select("g.volume.axis").call(volumeAxis);
         svg.select("g.tradearrow").datum(trades).call(tradearrow);
 
@@ -374,10 +361,10 @@ function draw(data, volumeData) {
 //設定當移動的時候要顯示的文字
 function move(coords, index) {
         var i;
-        for (i = 0; i < dataArr.length; i++) {
-                if (coords.x === dataArr[i].date) {
-                        svgText.text(d3.timeFormat("%Y/%m/%d %H:%M")(coords.x) + "【開盤：" + dataArr[i].open + "】【高：" + dataArr[i].high + "】【低：" + dataArr[i].low + "】【收盤：" + dataArr[i].close +
-                                "】【成交量：" + dataArr[i].volume + "】"
+        for (i = 0; i < g_data.length; i++) {
+                if (coords.x === g_data[i].date) {
+                        svgText.text(d3.timeFormat("%Y/%m/%d %H:%M")(coords.x) + "【開盤：" + g_data[i].open + "】【高：" + g_data[i].high + "】【低：" + g_data[i].low + "】【收盤：" + g_data[i].close +
+                                "】【成交量：" + g_data[i].volume + "】"
                         );
                 }
         }
@@ -429,6 +416,12 @@ function redraw() {
 }
 
 function MA(k) {
+        if(k == 0){//全關
+                svg.select("g.sma.ma-0").remove();
+                svg.select("g.sma.ma-1").remove();
+                svg.select("g.ema.ma-2").remove();
+                return;
+        }
         if (k == 5) {
                 MAname = "g.sma.ma-0";
                 MAname2 = "sma ma-0";

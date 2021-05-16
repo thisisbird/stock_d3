@@ -14,6 +14,8 @@ import (
 var timeMap = map[string]string{}
 var startTime = "08:45"
 var minK = 60
+var oDataPath = "o_data/kevin/"
+var finalDataPath = "public/data/"
 
 func main() {
 	http.HandleFunc("/kline", viewHandler)
@@ -25,12 +27,12 @@ func main() {
 
 }
 
-func createCSV() {
+func createCSV(fileName string) {
 	timeMap = timeMapping(startTime, minK)
 	finaFilelName := strings.Replace(startTime, ":", "", 1) + "_" + strconv.Itoa(minK) + "min.csv"
-	finaFilelName = "public/data/" + finaFilelName
-	fileName := "TXF1-分鐘-成交價.txt"
-	fileName = "o_data/kevin/" + fileName
+	buildIndexCSV(finaFilelName)
+	finaFilelName = finalDataPath + finaFilelName
+	fileName = oDataPath + fileName
 	readCSV(fileName, finaFilelName)
 }
 
@@ -49,8 +51,38 @@ func newHandler(writer http.ResponseWriter, request *http.Request) {
 func createHandler(writer http.ResponseWriter, request *http.Request) {
 	startTime = request.FormValue("start")
 	minK, _ = strconv.Atoi(request.FormValue("count"))
-	createCSV()
+	createCSV("TXF1-分鐘-成交價.txt")                               //來源資料
 	http.Redirect(writer, request, "/kline", http.StatusFound) //導回某頁(放在writer.Write底下沒作用)
+}
+
+func buildIndexCSV(checkFileName string) { //找尋有沒有0800_60min.csv檔名
+	fileName := "index.csv"
+	options := os.O_WRONLY | os.O_APPEND | os.O_CREATE //開啟檔案的選項
+	file, err := os.OpenFile(finalDataPath+fileName, options, os.FileMode(0600))
+	if err != nil {
+		log.Fatal(err)
+	}
+	scanner := bufio.NewScanner(file)
+
+	// options := os.O_WRONLY | os.O_CREATE //開啟檔案的選項
+
+	// str := "Date,Time,Open,High,Low,Close,TotalVolume"
+	// _, err = fmt.Fprintln(file2, str)
+	// check(err)
+	write := true
+	for scanner.Scan() {
+		sli := strings.Split(scanner.Text(), ",")
+		fmt.Println(sli[0])
+		if sli[0] == checkFileName {
+			write = false //有一樣的檔名 不需要更新
+			break
+		}
+	}
+	if write {
+		str := checkFileName
+		_, err = fmt.Fprintln(file, str)
+		check(err)
+	}
 }
 
 /**
@@ -112,7 +144,7 @@ func readCSV(fileName string, finaFilelName string) {
 			l = min(l, int(ll))
 			v += vv
 		}
-		if finalTime == sli[1] || sli[1] == "13:45:00"{
+		if finalTime == sli[1] || sli[1] == "13:45:00" {
 			cc, _ := strconv.ParseFloat(sli[5], 64)
 			c = int(cc) //取最後一根的收
 		}
@@ -129,6 +161,7 @@ func readCSV(fileName string, finaFilelName string) {
 	if scanner.Err() != nil {
 		log.Fatal(scanner.Err())
 	}
+
 }
 
 func check(err error) {
