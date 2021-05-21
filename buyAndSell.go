@@ -11,74 +11,94 @@ import (
 )
 
 type myStock struct {
-	date          string
-	open          int
-	high          int
-	low           int
-	close         int
-	volume        int
-	change        int
-	percentChange float32
-	action        string //buy sell
-	price         int    //買賣價格
-	lots          int    //口數
-	balance       int
+	index           int
+	index_action    int
+	action          string //buy sell
+	action_name     string //訊號
+	datetime        string
+	price           int //價格
+	lots            int //口數
+	balance         int
+	balance_p       float32
+	balance_final   int
+	balance_final_p float32
+	balance_max     int
+	balance_max_p   float32
+	balance_min     int
+	balance_min_p   float32
+}
+
+//交易編號,委託單編號,類型,訊號,成交時間,價格,數量,獲利,獲利(%),累積獲利,累積獲利(%),最大可能獲利,最大可能獲利(%),最大可能虧損,最大可能虧損(%)
+//Date,Time,Open,High,Low,Close,TotalVolume
+type kLine struct {
+	date string
+	time string
+	o    int
+	h    int
+	l    int
+	c    int
+	v    int
 }
 
 var total = 0
+var path = "public/data/"
+var k_file = "0845_300min"
 
 func main() {
-	readCSV("new.csv")
+	readCSV(path + k_file + ".csv")
 }
-
-//[0交易日期 1契約 2到期月份(週別) 3開盤價 4最高價 5最低價 6收盤價 7漲跌價 8漲跌% 9成交量 10結算價 11未沖銷契約數 12最後最佳買價 13最後最佳賣價 14歷史最高價 15歷史最低價 16是否因訊息面暫停交易 17交易時段 18價差對單式委託成交量]
 
 func readCSV(fileName string) {
 	file, err := os.Open(fileName)
 	if err != nil {
 		log.Fatal(err)
 	}
+	finalName := path + k_file + "_action.csv"
 	scanner := bufio.NewScanner(file)
+	os.Remove(finalName)
+	
 	options := os.O_WRONLY | os.O_CREATE //開啟檔案的選項
-	file2, err := os.OpenFile("buyAndSell.csv", options, os.FileMode(0600))
+	finalFile, err := os.OpenFile(finalName, options, os.FileMode(0600))
 	check(err)
 	i := -1       //天數
 	lots := 1     //總口數
 	buyPrice := 0 //進場價格(結算用)
-	array := []myStock{}
+	kLine_array := []kLine{}
+	myStock_array := []myStock{}
 	for scanner.Scan() {
+
 		if i == -1 { //跳過第一行標題
 			i++
-			_, err = fmt.Fprintln(file2, "交易日期,開盤價,最高價,最低價,收盤價,成交量,漲跌價,漲跌%,買賣,價格,口數,收益")
+			_, err = fmt.Fprintln(finalFile, "交易編號,委託單編號,類型,訊號,成交時間,價格,數量,獲利,獲利(%),累積獲利,累積獲利(%),最大可能獲利,最大可能獲利(%),最大可能虧損,最大可能虧損(%)")
 			continue
 		}
 
 		sli := strings.Split(scanner.Text(), ",")
-		data := myStock{}
+		data := kLine{}
 		data.date = sli[0]
-		data.open, _ = strconv.Atoi(sli[3])
-		data.high, _ = strconv.Atoi(sli[4])
-		data.low, _ = strconv.Atoi(sli[5])
-		data.close, _ = strconv.Atoi(sli[6])
-		data.volume, _ = strconv.Atoi(sli[9])
-		data.change, _ = strconv.Atoi(sli[7])
+		data.time = sli[1]
+		data.o, _ = strconv.Atoi(sli[2])
+		data.h, _ = strconv.Atoi(sli[3])
+		data.l, _ = strconv.Atoi(sli[4])
+		data.c, _ = strconv.Atoi(sli[5])
+		data.v, _ = strconv.Atoi(sli[6])
 		// data.percentChange, _ = strconv.Atoi(sli[10])
 
-		array = append(array, data)
+		kLine_array = append(kLine_array, data)
 		// if i < 4883 {//跳過前面的
 		// 	i++
 		// 	continue
 		// }
-		lots, buyPrice = Strategy(file2, array, i, lots, buyPrice) //策略判斷
+		lots, buyPrice = Strategy(finalFile, kLine_array, myStock_array, i, lots, buyPrice) //策略判斷
 		i++
 	}
 
-	_, err = fmt.Fprintln(file2, total)
+	_, err = fmt.Fprintln(finalFile, total)
 	check(err)
 
 	err = file.Close()
 	check(err)
-	err = file2.Close()
+	err = finalFile.Close()
 	check(err)
 
 	if scanner.Err() != nil {
@@ -92,43 +112,62 @@ func check(err error) {
 	}
 }
 
-func Strategy(file2 *os.File, array []myStock, i int, lots int, buyPrice int) (int, int) {
+func Strategy(finalFile *os.File, kk []kLine, myStocka []myStock, i int, lots int, buyPrice int) (int, int) {
+	myStock := myStock{}
 	buy := false
 	sell := false
 	action := false
-	if len(array) > 10 {
-		if array[i-3].close < array[i-2].close && array[i-2].close < array[i-1].close && array[i-1].close < array[i].close { //連漲四天
+	if len(kk) > 10 {
+		if kk[i-3].c < kk[i-2].c && kk[i-2].c < kk[i-1].c && kk[i-1].c < kk[i].c { //連漲四天
 			buy = true
 		}
 
-		if array[i-3].close > array[i-2].close && array[i-2].close > array[i-1].close && array[i-1].close > array[i].close { //連跌四天
+		if kk[i-3].c > kk[i-2].c && kk[i-2].c > kk[i-1].c && kk[i-1].c > kk[i].c { //連跌四天
 			sell = true
 		}
 	}
 
 	if buy && lots > 0 {
-		array[i].action = "buy"
-		array[i].price = array[i].close
-		array[i].lots = 1
-		array[i].balance = 0
-		buyPrice = array[i].close
+		myStock.action = "buy"
+		myStock.price = kk[i].c
+		myStock.lots = 1
+		myStock.balance = 0
+		buyPrice = kk[i].c
 		action = true
 		lots--
 	}
 
 	if sell && lots == 0 {
-		array[i].action = "sell"
-		array[i].price = array[i].close
-		array[i].lots = 1
-		array[i].balance = array[i].close - buyPrice
+		myStock.action = "sell"
+		myStock.price = kk[i].c
+		myStock.lots = 1
+		myStock.balance = kk[i].c - buyPrice
 		lots++
-		total += array[i].balance
+		total += myStock.balance
 		action = true
 	}
 
 	if action { //執行動作
-		dataToCSV := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(array[i])), ", "), "{}")
-		_, err := fmt.Fprintln(file2, dataToCSV)
+		myStock.action_name = "action_name"
+		myStock.datetime = kk[i].date + " " + kk[i].time
+		// dataToCSV := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(myStock)), ","), "{}")
+		dataToCSV := fmt.Sprint(myStock.index) + ","
+		dataToCSV += fmt.Sprint(myStock.index_action) + ","
+		dataToCSV += myStock.action + ","
+		dataToCSV += myStock.action_name + ","
+		dataToCSV += myStock.datetime + ","
+		dataToCSV += fmt.Sprint(myStock.price) + ","
+		dataToCSV += fmt.Sprint(myStock.lots) + ","
+		dataToCSV += fmt.Sprint(myStock.balance) + ","
+		dataToCSV += fmt.Sprint(myStock.balance_p) + ","
+		dataToCSV += fmt.Sprint(myStock.balance_final) + ","
+		dataToCSV += fmt.Sprint(myStock.balance_final_p) + ","
+		dataToCSV += fmt.Sprint(myStock.balance_max) + ","
+		dataToCSV += fmt.Sprint(myStock.balance_max_p) + ","
+		dataToCSV += fmt.Sprint(myStock.balance_min) + ","
+		dataToCSV += fmt.Sprint(myStock.balance_min_p)
+
+		_, err := fmt.Fprintln(finalFile, dataToCSV)
 		check(err)
 	}
 	return lots, buyPrice

@@ -1,10 +1,10 @@
 //讀取資料列表-動態產生按鈕
-file_index = "data/index.csv";
+var file_index = "data/index.csv";
 var list_index;
 d3.csv(file_index, function (error, data) {
         list_index = data;
         data.forEach(function (v,i) {
-                $("#list").append(`<button onclick="loadJSON('${v.filename}','ma.csv','buyAndSell.csv', 'date')">${v.filename}</button>`);
+                $("#list").append(`<button onclick="loadJSON('${v.filename}','ma.csv','buyAndSell.csv')">${v.filename}</button>`);
         });
 });
 
@@ -134,21 +134,21 @@ var path = "data/";
 // loadJSON("08:45_60min.csv", "ma.csv", "buyAndSell.csv", "date");
 
 
-function loadJSON(file, file2, file3, type) {
+function loadJSON(k_file, ma_file, action_file) {
         var date_start = $('#start_year').val() + $('#start_month').val();
         var date_end = $('#end_year').val() + $('#end_month').val();
         date_start = monthDate(date_start)
         date_end = monthDate(date_end)
         date_end.setMonth(date_end.getMonth() + 1)
         svg.selectAll("*").remove(); // 切換不同資料需要重新畫圖，因此需要先清除原先的圖案
-        d3.csv(file2, function (error, data) {
+        d3.csv(ma_file, function (error, data) {
                 dataMaArr_o = data;//匯入ma資料
         });
 
-        d3.csv(path + file3, function (error, data) {
+        d3.csv(path + action_file, function (error, data) {
                 dataBuySellArr_o = data;//匯入買賣資料
         });
-        d3.csv(path + file, function (error, data) {
+        d3.csv(path + k_file, function (error, data) {
                 var accessor = candlestick.accessor();
                 var jsonData = data;
 
