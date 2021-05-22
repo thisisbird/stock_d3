@@ -1,0 +1,33 @@
+[IntrabarOrderGeneration = True];
+vars: pPosition(0), pMP(0), pEndTime(0); array: pCDate[2](0);
+ 
+pMP = marketposition;
+ 
+if date <> date[1] then begin //Set CloseDate
+ pCDate[1] = pCDate[0];
+ if date >= _closedate1() and pCDate[0] = 0 then begin
+  pCDate[0] = 1;
+ end else if Month(date) <> Month(date[1]) then begin
+  pCDate[0] = 0;
+ end;
+ if date >= 1081201 then pEndTime = 1330 else pEndTime = 1345;
+end;
+
+
+if pCDate[1] = 0 and pCDate[0] = 1 then begin //Day Bar CloseDate
+ setexitonclose;
+ pPosition = pMP;
+ if bartype = 1 then begin //Intra-Day
+  if time >= pEndTime then begin
+   sell("CloseDate(B)") this bar on Close;
+   buytocover("CloseDate(S)") this bar on Close;
+   pPosition = pMP;
+  end;
+ end else if bartype = 2 then begin //Day
+  if pPosition = 1 then begin
+   buy("B(D)") next bar at market;
+  end else if pPosition = -1 then begin
+   sellshort("S(D)") next bar at market;
+  end;
+ end;
+end;

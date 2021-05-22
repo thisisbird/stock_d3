@@ -7,7 +7,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	// "strings"
 )
 
 type myStock struct {
@@ -40,31 +39,39 @@ type kLine struct {
 	v    int
 }
 
+type Buy string
+type Sell string
+
+var g_myStock_array = []myStock{}
+var g_kLine_array = []kLine{}
 var total = 0
+var lots = 0 //初始口數
+var i = -1   //天數
+
+//以下可調整參數
+var max_lots = 1 //做多最大口數
+var min_lots = 0 //做空最大口數
+var buyPrice = 0 //進場價格(結算用)
 var path = "public/data/"
 var k_file = "0845_300min"
 
+//以上可調整參數
+
+var finalName = k_file + "_action.csv"
+var _ = os.Remove(path + finalName)
+var finalFile, err = os.OpenFile(path+finalName, os.O_WRONLY|os.O_CREATE, os.FileMode(0600))
+
 func main() {
+	min_lots *= -1
 	readCSV(path + k_file + ".csv")
 }
 
-func readCSV(fileName string) {
-	file, err := os.Open(fileName)
-	if err != nil {
-		log.Fatal(err)
-	}
-	finalName := path + k_file + "_action.csv"
-	scanner := bufio.NewScanner(file)
-	os.Remove(finalName)
-	
-	options := os.O_WRONLY | os.O_CREATE //開啟檔案的選項
-	finalFile, err := os.OpenFile(finalName, options, os.FileMode(0600))
+func readCSV(kLine_fileName string) {
+	file, err := os.Open(kLine_fileName)
 	check(err)
-	i := -1       //天數
-	lots := 1     //總口數
-	buyPrice := 0 //進場價格(結算用)
-	kLine_array := []kLine{}
-	myStock_array := []myStock{}
+
+	scanner := bufio.NewScanner(file)
+
 	for scanner.Scan() {
 
 		if i == -1 { //跳過第一行標題
@@ -82,20 +89,15 @@ func readCSV(fileName string) {
 		data.l, _ = strconv.Atoi(sli[4])
 		data.c, _ = strconv.Atoi(sli[5])
 		data.v, _ = strconv.Atoi(sli[6])
-		// data.percentChange, _ = strconv.Atoi(sli[10])
 
-		kLine_array = append(kLine_array, data)
-		// if i < 4883 {//跳過前面的
-		// 	i++
-		// 	continue
-		// }
-		lots, buyPrice = Strategy(finalFile, kLine_array, myStock_array, i, lots, buyPrice) //策略判斷
+		g_kLine_array = append(g_kLine_array, data)
+
+		Strategy(i, lots, buyPrice) //策略判斷
 		i++
 	}
 
 	_, err = fmt.Fprintln(finalFile, total)
 	check(err)
-
 	err = file.Close()
 	check(err)
 	err = finalFile.Close()
@@ -112,45 +114,74 @@ func check(err error) {
 	}
 }
 
-func Strategy(finalFile *os.File, kk []kLine, myStocka []myStock, i int, lots int, buyPrice int) (int, int) {
-	myStock := myStock{}
-	buy := false
-	sell := false
-	action := false
+func Strategy(i int, lots int, buyPrice int) {
+	kk := g_kLine_array
+
 	if len(kk) > 10 {
 		if kk[i-3].c < kk[i-2].c && kk[i-2].c < kk[i-1].c && kk[i-1].c < kk[i].c { //連漲四天
-			buy = true
+			// buy = true
+			Buy("buy_test").Lots(2).Price(1).nextBar()
 		}
 
 		if kk[i-3].c > kk[i-2].c && kk[i-2].c > kk[i-1].c && kk[i-1].c > kk[i].c { //連跌四天
-			sell = true
+			// sell = true
+			Sell("sell_test").Lots(2).Price(1).nextBar()
 		}
 	}
 
-	if buy && lots > 0 {
-		myStock.action = "buy"
-		myStock.price = kk[i].c
+}
+
+func (s Sell) Price(price int) Sell {
+	// fmt.Println("price", s, price)
+	return s
+}
+func (s Sell) Lots(lots int) Sell {
+	// fmt.Println("lots", s, lots)
+	return s
+}
+func (s Sell) nextBar() {
+	// fmt.Println("next", s)
+	action("sell", string(s))
+}
+func (b Buy) Price(price int) Buy {
+	// fmt.Println("price", s, price)
+	return b
+}
+func (b Buy) Lots(lots int) Buy {
+	// fmt.Println("lots", s, lots)
+	return b
+}
+func (b Buy) nextBar() {
+	// fmt.Println("next", s)
+	action("buy", string(b))
+}
+
+func action(action string, action_name string) {
+	is_action := false
+	myStock := myStock{}
+	myStock.action = action
+	myStock.action_name = action_name
+
+	if 0 <= lots && lots < max_lots && action == "buy" {
+		myStock.price = g_kLine_array[i].c
 		myStock.lots = 1
 		myStock.balance = 0
-		buyPrice = kk[i].c
-		action = true
-		lots--
-	}
-
-	if sell && lots == 0 {
-		myStock.action = "sell"
-		myStock.price = kk[i].c
-		myStock.lots = 1
-		myStock.balance = kk[i].c - buyPrice
+		buyPrice = g_kLine_array[i].c
 		lots++
-		total += myStock.balance
-		action = true
+		is_action = true
 	}
-
-	if action { //執行動作
-		myStock.action_name = "action_name"
-		myStock.datetime = kk[i].date + " " + kk[i].time
-		// dataToCSV := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(myStock)), ","), "{}")
+	fmt.Println(lots, max_lots, action)
+	if 0 < lots && lots <= max_lots && action == "sell" {
+		myStock.action = "sell"
+		myStock.price = g_kLine_array[i].c
+		myStock.lots = 1
+		myStock.balance = g_kLine_array[i].c - buyPrice
+		lots--
+		total += myStock.balance
+		is_action = true
+	}
+	if is_action { //執行動作
+		myStock.datetime = g_kLine_array[i].date + " " + g_kLine_array[i].time
 		dataToCSV := fmt.Sprint(myStock.index) + ","
 		dataToCSV += fmt.Sprint(myStock.index_action) + ","
 		dataToCSV += myStock.action + ","
@@ -170,5 +201,4 @@ func Strategy(finalFile *os.File, kk []kLine, myStocka []myStock, i int, lots in
 		_, err := fmt.Fprintln(finalFile, dataToCSV)
 		check(err)
 	}
-	return lots, buyPrice
 }

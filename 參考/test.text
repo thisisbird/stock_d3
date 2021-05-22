@@ -1,0 +1,84 @@
+inputs:
+lots(4),
+BollingerPrice( Close ),
+Length( 22 ),
+NumDevsUp( 2 ),
+NumDevsDn( -2 ),
+Displace( 0 ) ;
+
+variables:
+MD( 0 ),
+var1( 0 ),
+DN( 0 ),
+UP( 0 ),
+current_status(0);
+
+
+//bolling band
+MD = AverageFC( BollingerPrice, Length ) ;
+var1 = StandardDev( BollingerPrice, Length, 1 ) ;
+UP = MD + NumDevsUp * var1 ;
+DN = MD + NumDevsDn * var1 ;
+
+
+condition1=(c data2[2]<4000 and c data2[1]<4000 and c data2<4000) and open-close>0;
+condition2=(c data2[1]>5000 and c data2>5000) and open-close<0;
+
+condition3=(c data2[1]>4000 and c data2>4000) and high[3]>MD and open[2]-close[2]>0 and open[1]-close[1]>0 and open-close>0 and low<DN;
+
+condition4=(c data2>7500) and low<MD;
+condition5=(c data2>3500) and low<DN; 
+
+condition6=(c data2<3000) and high>MD;
+
+
+if condition1 then buy("D-wave") lots contracts next bar at market;
+if condition2 then sellshort("C-wave") lots contracts next bar at market;
+
+
+if marketposition=1 then begin
+
+if condition4 then sell("A-cup") next bar at market;
+if condition5 then sell("B-cup") next bar at market;
+
+if currentcontracts=lots then begin
+sell 1 contract next bar at entryprice+150 limit;
+end;
+
+if currentcontracts=lots-1 then begin
+sell 1 contract next bar at entryprice+300 limit;
+sell next bar at highest(h,barssinceentry)[1]-100 stop;
+end;
+
+if currentcontracts=lots-2 then begin
+sell 1 contract next bar at entryprice+800 limit;
+sell next bar at highest(h,barssinceentry)[1]-400 stop;
+end;
+
+end;
+
+if marketposition=-1 then begin
+
+if currentcontracts=lots then begin
+buytocover 1 contract next bar at entryprice-150 limit;
+end;
+
+if currentcontracts=lots-1 then begin
+buytocover 1 contract next bar at entryprice-300 limit;
+buytocover next bar at lowest(l,barssinceentry)[1]+100 stop;
+end;
+
+if currentcontracts=lots-2 then begin
+buytocover 1 contract next bar at entryprice-500 limit;
+buytocover next bar at lowest(l,barssinceentry)[1]+100 stop;
+end;
+
+if currentcontracts=lots-3 then begin
+buytocover 1 contract next bar at entryprice-1000 limit;
+buytocover next bar at lowest(l,barssinceentry)[1]+200 stop;
+end;
+end;
+
+
+
+
