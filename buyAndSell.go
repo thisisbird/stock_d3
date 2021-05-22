@@ -49,9 +49,8 @@ var lots = 0 //初始口數
 var i = -1   //天數
 
 //以下可調整參數
-var max_lots = 1 //做多最大口數
+var max_lots = 2 //做多最大口數
 var min_lots = 0 //做空最大口數
-var buyPrice = 0 //進場價格(結算用)
 var path = "public/data/"
 var k_file = "0845_300min"
 
@@ -92,7 +91,7 @@ func readCSV(kLine_fileName string) {
 
 		g_kLine_array = append(g_kLine_array, data)
 
-		Strategy(i, lots, buyPrice) //策略判斷
+		Strategy() //策略判斷
 		i++
 	}
 
@@ -114,70 +113,82 @@ func check(err error) {
 	}
 }
 
-func Strategy(i int, lots int, buyPrice int) {
+func Strategy() {
 	kk := g_kLine_array
 
 	if len(kk) > 10 {
 		if kk[i-3].c < kk[i-2].c && kk[i-2].c < kk[i-1].c && kk[i-1].c < kk[i].c { //連漲四天
 			// buy = true
-			Buy("buy_test").Lots(2).Price(1).nextBar()
+			Buy("buy_test").Lots(1).Price(1).nextBar()
 		}
 
 		if kk[i-3].c > kk[i-2].c && kk[i-2].c > kk[i-1].c && kk[i-1].c > kk[i].c { //連跌四天
 			// sell = true
-			Sell("sell_test").Lots(2).Price(1).nextBar()
+			Sell("sell_test").Lots(1).Price(1).nextBar()
 		}
 	}
 
 }
 
+var temp_action string
+var temp_action_name string
+var temp_buyPrice = 0 //累積買進價格
+var temp_price int    //成交價格
+var temp_lots int
+
 func (s Sell) Price(price int) Sell {
-	// fmt.Println("price", s, price)
+	temp_price = price
 	return s
 }
 func (s Sell) Lots(lots int) Sell {
-	// fmt.Println("lots", s, lots)
+	temp_lots = lots
 	return s
 }
 func (s Sell) nextBar() {
-	// fmt.Println("next", s)
-	action("sell", string(s))
+	temp_action_name = string(s)
+	temp_action = "sell"
+	action()
 }
+
 func (b Buy) Price(price int) Buy {
-	// fmt.Println("price", s, price)
+	temp_price = price
 	return b
 }
 func (b Buy) Lots(lots int) Buy {
-	// fmt.Println("lots", s, lots)
+	temp_lots = lots
 	return b
 }
 func (b Buy) nextBar() {
-	// fmt.Println("next", s)
-	action("buy", string(b))
+	temp_action_name = string(b)
+	temp_action = "buy"
+	action()
 }
 
-func action(action string, action_name string) {
+func action() {
 	is_action := false
 	myStock := myStock{}
-	myStock.action = action
-	myStock.action_name = action_name
-
-	if 0 <= lots && lots < max_lots && action == "buy" {
+	myStock.action = temp_action
+	myStock.action_name = temp_action_name
+	myStock.lots = temp_lots
+	if 0 <= lots && (lots+temp_lots) <= max_lots && temp_action == "buy" {
 		myStock.price = g_kLine_array[i].c
-		myStock.lots = 1
 		myStock.balance = 0
-		buyPrice = g_kLine_array[i].c
-		lots++
+		temp_buyPrice += g_kLine_array[i].c * temp_lots
+		lots += temp_lots
 		is_action = true
 	}
-	fmt.Println(lots, max_lots, action)
-	if 0 < lots && lots <= max_lots && action == "sell" {
+	if 0 <= (lots-temp_lots) && lots <= max_lots && temp_action == "sell" {
 		myStock.action = "sell"
 		myStock.price = g_kLine_array[i].c
-		myStock.lots = 1
-		myStock.balance = g_kLine_array[i].c - buyPrice
-		lots--
-		total += myStock.balance
+
+		myStock.balance = g_kLine_array[i].c*temp_lots - temp_buyPrice
+		temp_buyPrice -= g_kLine_array[i].c * temp_lots
+		lots -= temp_lots
+
+		if lots == 0 {
+			temp_buyPrice = 0 //買進價格歸０
+			total += myStock.balance
+		}
 		is_action = true
 	}
 	if is_action { //執行動作
