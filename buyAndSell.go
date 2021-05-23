@@ -56,9 +56,12 @@ var k_file = "0845_300min"
 
 //以上可調整參數
 
-var finalName = k_file + "_action.csv"
+var finalName = k_file + "_action.csv"   //依時間排序
+var finalName2 = k_file + "_action2.csv" //進出場對應排序
 var _ = os.Remove(path + finalName)
-var finalFile, err = os.OpenFile(path+finalName, os.O_WRONLY|os.O_CREATE, os.FileMode(0600))
+var _ = os.Remove(path + finalName2)
+var finalFile, _ = os.OpenFile(path+finalName, os.O_WRONLY|os.O_CREATE, os.FileMode(0600))
+var finalFile2, _ = os.OpenFile(path+finalName2, os.O_WRONLY|os.O_CREATE, os.FileMode(0600))
 
 func main() {
 	min_lots *= -1
@@ -91,15 +94,26 @@ func readCSV(kLine_fileName string) {
 
 		g_kLine_array = append(g_kLine_array, data)
 
+		if i < 5600 {
+			i++
+			continue
+		}
+		if temp_ready { //隔天執行用
+			action()
+			temp_ready = false
+		}
+
 		Strategy() //策略判斷
+
 		i++
 	}
-
 	_, err = fmt.Fprintln(finalFile, total)
 	check(err)
 	err = file.Close()
 	check(err)
 	err = finalFile.Close()
+	check(err)
+	err = finalFile2.Close()
 	check(err)
 
 	if scanner.Err() != nil {
@@ -118,13 +132,11 @@ func Strategy() {
 
 	if len(kk) > 10 {
 		if kk[i-3].c < kk[i-2].c && kk[i-2].c < kk[i-1].c && kk[i-1].c < kk[i].c { //連漲四天
-			// buy = true
 			Buy("buy_test").Lots(1).Price(1).nextBar()
 		}
 
 		if kk[i-3].c > kk[i-2].c && kk[i-2].c > kk[i-1].c && kk[i-1].c > kk[i].c { //連跌四天
-			// sell = true
-			Sell("sell_test").Lots(1).Price(1).nextBar()
+			Sell("sell_test").Lots(2).Price(1).nextBar()
 		}
 	}
 
@@ -132,9 +144,10 @@ func Strategy() {
 
 var temp_action string
 var temp_action_name string
-var temp_buyPrice = 0 //累積買進價格
-var temp_price int    //成交價格
-var temp_lots int
+var temp_buyPrice = 0  //累積買進價格
+var temp_price int     //成交價格
+var temp_lots int      //成交口數
+var temp_ready = false //明天是否執行
 
 func (s Sell) Price(price int) Sell {
 	temp_price = price
@@ -147,7 +160,8 @@ func (s Sell) Lots(lots int) Sell {
 func (s Sell) nextBar() {
 	temp_action_name = string(s)
 	temp_action = "sell"
-	action()
+	temp_ready = true
+	// action()
 }
 
 func (b Buy) Price(price int) Buy {
@@ -161,15 +175,14 @@ func (b Buy) Lots(lots int) Buy {
 func (b Buy) nextBar() {
 	temp_action_name = string(b)
 	temp_action = "buy"
-	action()
+	temp_ready = true
+	// action()
 }
 
-func action() {
+func action() { //執行策略(紀錄)
 	is_action := false
 	myStock := myStock{}
-	myStock.action = temp_action
-	myStock.action_name = temp_action_name
-	myStock.lots = temp_lots
+
 	if 0 <= lots && (lots+temp_lots) <= max_lots && temp_action == "buy" {
 		myStock.price = g_kLine_array[i].c
 		myStock.balance = 0
@@ -178,7 +191,6 @@ func action() {
 		is_action = true
 	}
 	if 0 <= (lots-temp_lots) && lots <= max_lots && temp_action == "sell" {
-		myStock.action = "sell"
 		myStock.price = g_kLine_array[i].c
 
 		myStock.balance = g_kLine_array[i].c*temp_lots - temp_buyPrice
@@ -191,25 +203,82 @@ func action() {
 		}
 		is_action = true
 	}
+
 	if is_action { //執行動作
 		myStock.datetime = g_kLine_array[i].date + " " + g_kLine_array[i].time
-		dataToCSV := fmt.Sprint(myStock.index) + ","
-		dataToCSV += fmt.Sprint(myStock.index_action) + ","
-		dataToCSV += myStock.action + ","
-		dataToCSV += myStock.action_name + ","
-		dataToCSV += myStock.datetime + ","
-		dataToCSV += fmt.Sprint(myStock.price) + ","
-		dataToCSV += fmt.Sprint(myStock.lots) + ","
-		dataToCSV += fmt.Sprint(myStock.balance) + ","
-		dataToCSV += fmt.Sprint(myStock.balance_p) + ","
-		dataToCSV += fmt.Sprint(myStock.balance_final) + ","
-		dataToCSV += fmt.Sprint(myStock.balance_final_p) + ","
-		dataToCSV += fmt.Sprint(myStock.balance_max) + ","
-		dataToCSV += fmt.Sprint(myStock.balance_max_p) + ","
-		dataToCSV += fmt.Sprint(myStock.balance_min) + ","
-		dataToCSV += fmt.Sprint(myStock.balance_min_p)
-
-		_, err := fmt.Fprintln(finalFile, dataToCSV)
-		check(err)
+		myStock.action = temp_action
+		myStock.action_name = temp_action_name
+		myStock.lots = temp_lots
+		action1(myStock)
+		action2(myStock)
 	}
+
+}
+func action1(myStock myStock) { //依時間排序
+	saveRow(finalFile, myStock)
+}
+func action2(myStock myStock) { //進出場對應排序
+	count := len(g_myStock_array)
+	if count == 0 {
+		g_myStock_array = append(g_myStock_array, myStock)
+		return
+	}
+	if count > 0 && g_myStock_array[0].action == myStock.action { //買賣別一樣就加入陣列
+		g_myStock_array = append(g_myStock_array, myStock)
+		return
+	}
+	if count > 0 && g_myStock_array[0].action != myStock.action { //買賣別不一樣
+
+		if g_myStock_array[0].lots == myStock.lots { //口數比對
+			saveRow(finalFile2, g_myStock_array[0])
+			saveRow(finalFile2, myStock)
+			g_myStock_array = g_myStock_array[1:]
+			return
+		}
+		if g_myStock_array[0].lots > myStock.lots { //口數比對
+			new_lots := g_myStock_array[0].lots - myStock.lots
+			g_myStock_array[0].lots = myStock.lots
+
+			saveRow(finalFile2, g_myStock_array[0])
+			saveRow(finalFile2, myStock)
+
+			g_myStock_array[0].lots = new_lots
+
+		}
+		if g_myStock_array[0].lots < myStock.lots { //口數比對
+			x := len(g_myStock_array)
+			for x > 0 {
+				new_lots := myStock.lots - g_myStock_array[0].lots
+				myStock.lots = g_myStock_array[0].lots
+				saveRow(finalFile2, g_myStock_array[0])
+				saveRow(finalFile2, myStock)
+				myStock.lots = new_lots
+				g_myStock_array = g_myStock_array[1:]
+
+				x = len(g_myStock_array)
+			}
+
+		}
+
+	}
+}
+func saveRow(file *os.File, myStock myStock) {
+	dataToCSV := fmt.Sprint(myStock.index) + ","
+	dataToCSV += fmt.Sprint(myStock.index_action) + ","
+	dataToCSV += myStock.action + ","
+	dataToCSV += myStock.action_name + ","
+	dataToCSV += myStock.datetime + ","
+	dataToCSV += fmt.Sprint(myStock.price) + ","
+	dataToCSV += fmt.Sprint(myStock.lots) + ","
+	dataToCSV += fmt.Sprint(myStock.balance) + ","
+	dataToCSV += fmt.Sprint(myStock.balance_p) + ","
+	dataToCSV += fmt.Sprint(myStock.balance_final) + ","
+	dataToCSV += fmt.Sprint(myStock.balance_final_p) + ","
+	dataToCSV += fmt.Sprint(myStock.balance_max) + ","
+	dataToCSV += fmt.Sprint(myStock.balance_max_p) + ","
+	dataToCSV += fmt.Sprint(myStock.balance_min) + ","
+	dataToCSV += fmt.Sprint(myStock.balance_min_p)
+
+	_, err := fmt.Fprintln(file, dataToCSV)
+	check(err)
 }
