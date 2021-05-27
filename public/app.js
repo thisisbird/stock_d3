@@ -4,7 +4,7 @@ var list_index;
 d3.csv(file_index, function (error, data) {
         list_index = data;
         data.forEach(function (v,i) {
-                $("#list").append(`<button onclick="loadJSON('${v.filename}','ma.csv','buyAndSell.csv')">${v.filename}</button>`);
+                $("#list").append(`<button onclick="loadJSON('${v.filename}','ma.csv','${v.action}')">${v.filename}</button>`);
         });
 });
 
@@ -214,10 +214,10 @@ function loadJSON(k_file, ma_file, action_file) {
                 dataMaArr = dataMaArr_o.filter(function (value) {//MA數字資料
                         return date_start <= parseDate(value['交易日期']) && parseDate(value['交易日期']) <= date_end;
                 });
-
                 dataBuySellArr = dataBuySellArr_o.filter(function (value) {//MA數字資料
-                        return date_start <= parseDate(value['交易日期']) && parseDate(value['交易日期']) <= date_end;
+                        return date_start <= parseDateTime(value['成交時間']) && parseDateTime(value['成交時間']) <= date_end;
                 });
+
                 // draw(data.slice(start, end), g_volumeData.slice(start, end));
                 draw();
         });
@@ -235,8 +235,8 @@ function draw() {
 
         var trades = dataBuySellArr.map(function (d) {
                 return {
-                        date: parseDate(d["交易日期"]),
-                        type: d["買賣"].trim(),
+                        date: parseDateTime(d["成交時間"]),
+                        type: d["類型"].trim(),
                         price: parseInt(d["價格"]),
                 }
         });
@@ -245,27 +245,27 @@ function draw() {
         var temp = [];
         dataBuySellArr.forEach(function (d) {
                 temp.push(d)
-                if (d["收益"] > 0) {
+                if (d["獲利"] > 0) {
                         temp.push({ date: null, value: 0 });
                         get_line = get_line.concat(temp);
                         temp = [];
                 }
-                if (d["收益"] < 0) {
+                if (d["獲利"] < 0) {
                         temp.push({ date: null, value: 0 });
                         loss_line = loss_line.concat(temp);
                         temp = []
                 }
         });
-
+        console.log(get_line);
         var get_line = get_line.map(function (d) {
                 return {
-                        date: parseDate(d["交易日期"]) ?? null,
+                        date: parseDateTime(d["成交時間"]) ?? null,
                         value: d["價格"] === undefined ? null : parseInt(d["價格"])
                 }
         });
         var loss_line = loss_line.map(function (d) {
                 return {
-                        date: parseDate(d["交易日期"]) ?? null,
+                        date: parseDateTime(d["成交時間"]) ?? null,
                         value: d["價格"] === undefined ? null : parseInt(d["價格"]),
                 }
         });

@@ -25,6 +25,8 @@ type myStock struct {
 	balance_max_p   float32
 	balance_min     int
 	balance_min_p   float32
+	price_max       int //紀錄最高值
+	price_min       int //紀錄最低值
 }
 
 //交易編號,委託單編號,類型,訊號,成交時間,價格,數量,獲利,獲利(%),累積獲利,累積獲利(%),最大可能獲利,最大可能獲利(%),最大可能虧損,最大可能虧損(%)
@@ -63,6 +65,21 @@ var _ = os.Remove(path + finalName2)
 var finalFile, _ = os.OpenFile(path+finalName, os.O_WRONLY|os.O_CREATE, os.FileMode(0600))
 var finalFile2, _ = os.OpenFile(path+finalName2, os.O_WRONLY|os.O_CREATE, os.FileMode(0600))
 
+func Strategy() {
+	kk := g_kLine_array
+
+	if len(kk) > 10 {
+		if kk[i-3].c < kk[i-2].c && kk[i-2].c < kk[i-1].c && kk[i-1].c < kk[i].c { //連漲四天
+			Buy("buy_test").Lots(1).Price(1).nextBar()
+		}
+
+		if kk[i-3].c > kk[i-2].c && kk[i-2].c > kk[i-1].c && kk[i-1].c > kk[i].c { //連跌四天
+			Sell("sell_test").Lots(2).Price(1).nextBar()
+		}
+	}
+
+}
+
 func main() {
 	min_lots *= -1
 	readCSV(path + k_file + ".csv")
@@ -79,6 +96,7 @@ func readCSV(kLine_fileName string) {
 		if i == -1 { //跳過第一行標題
 			i++
 			_, err = fmt.Fprintln(finalFile, "交易編號,委託單編號,類型,訊號,成交時間,價格,數量,獲利,獲利(%),累積獲利,累積獲利(%),最大可能獲利,最大可能獲利(%),最大可能虧損,最大可能虧損(%)")
+			_, err = fmt.Fprintln(finalFile2, "交易編號,委託單編號,類型,訊號,成交時間,價格,數量,獲利,獲利(%),累積獲利,累積獲利(%),最大可能獲利,最大可能獲利(%),最大可能虧損,最大可能虧損(%)")
 			continue
 		}
 
@@ -93,7 +111,7 @@ func readCSV(kLine_fileName string) {
 		data.v, _ = strconv.Atoi(sli[6])
 
 		g_kLine_array = append(g_kLine_array, data)
-
+		recordHighAndLow(data)
 		if i < 5600 {
 			i++
 			continue
@@ -104,11 +122,8 @@ func readCSV(kLine_fileName string) {
 		}
 
 		Strategy() //策略判斷
-
 		i++
 	}
-	_, err = fmt.Fprintln(finalFile, total)
-	check(err)
 	err = file.Close()
 	check(err)
 	err = finalFile.Close()
@@ -127,27 +142,12 @@ func check(err error) {
 	}
 }
 
-func Strategy() {
-	kk := g_kLine_array
-
-	if len(kk) > 10 {
-		if kk[i-3].c < kk[i-2].c && kk[i-2].c < kk[i-1].c && kk[i-1].c < kk[i].c { //連漲四天
-			Buy("buy_test").Lots(1).Price(1).nextBar()
-		}
-
-		if kk[i-3].c > kk[i-2].c && kk[i-2].c > kk[i-1].c && kk[i-1].c > kk[i].c { //連跌四天
-			Sell("sell_test").Lots(2).Price(1).nextBar()
-		}
-	}
-
-}
-
 var temp_action string
 var temp_action_name string
-var temp_buyPrice = 0  //累積買進價格
-var temp_price int     //成交價格
-var temp_lots int      //成交口數
-var temp_ready = false //明天是否執行
+var temp_balance_final = 0 //累積獲利價格
+var temp_price int         //成交價格
+var temp_lots int          //成交口數
+var temp_ready = false     //明天是否執行
 
 func (s Sell) Price(price int) Sell {
 	temp_price = price
@@ -186,19 +186,15 @@ func action() { //執行策略(紀錄)
 	if 0 <= lots && (lots+temp_lots) <= max_lots && temp_action == "buy" {
 		myStock.price = g_kLine_array[i].c
 		myStock.balance = 0
-		temp_buyPrice += g_kLine_array[i].c * temp_lots
 		lots += temp_lots
 		is_action = true
 	}
 	if 0 <= (lots-temp_lots) && lots <= max_lots && temp_action == "sell" {
 		myStock.price = g_kLine_array[i].c
 
-		myStock.balance = g_kLine_array[i].c*temp_lots - temp_buyPrice
-		temp_buyPrice -= g_kLine_array[i].c * temp_lots
 		lots -= temp_lots
 
 		if lots == 0 {
-			temp_buyPrice = 0 //買進價格歸０
 			total += myStock.balance
 		}
 		is_action = true
@@ -230,6 +226,7 @@ func action2(myStock myStock) { //進出場對應排序
 	if count > 0 && g_myStock_array[0].action != myStock.action { //買賣別不一樣
 
 		if g_myStock_array[0].lots == myStock.lots { //口數比對
+
 			saveRow(finalFile2, g_myStock_array[0])
 			saveRow(finalFile2, myStock)
 			g_myStock_array = g_myStock_array[1:]
@@ -243,13 +240,19 @@ func action2(myStock myStock) { //進出場對應排序
 			saveRow(finalFile2, myStock)
 
 			g_myStock_array[0].lots = new_lots
-
+			return
 		}
 		if g_myStock_array[0].lots < myStock.lots { //口數比對
 			x := len(g_myStock_array)
 			for x > 0 {
 				new_lots := myStock.lots - g_myStock_array[0].lots
 				myStock.lots = g_myStock_array[0].lots
+
+				myStock.balance = balance(g_myStock_array[0], myStock)
+				myStock.balance_final = temp_balance_final
+				myStock.balance_max = balanceMax(g_myStock_array[0], myStock)
+				myStock.balance_min = balanceMin(g_myStock_array[0], myStock)
+
 				saveRow(finalFile2, g_myStock_array[0])
 				saveRow(finalFile2, myStock)
 				myStock.lots = new_lots
@@ -257,7 +260,7 @@ func action2(myStock myStock) { //進出場對應排序
 
 				x = len(g_myStock_array)
 			}
-
+			return
 		}
 
 	}
@@ -281,4 +284,45 @@ func saveRow(file *os.File, myStock myStock) {
 
 	_, err := fmt.Fprintln(file, dataToCSV)
 	check(err)
+}
+
+func recordHighAndLow(k kLine) {
+	if len(g_myStock_array) == 0 {
+		return
+	}
+	for i := 0; i < len(g_myStock_array); i++ {
+		g_myStock_array[i].price_max = max(g_myStock_array[i].price_max, k.h)
+		g_myStock_array[i].price_min = min(g_myStock_array[i].price_min, k.l)
+	}
+}
+
+func balance(entry myStock, exit myStock) int {
+	balance := exit.lots*exit.price - entry.lots*entry.price
+	temp_balance_final += balance
+	return balance
+}
+func balanceMax(entry myStock, exit myStock) int {
+	balance := entry.lots*entry.price_max - entry.lots*entry.price
+	return balance
+}
+func balanceMin(entry myStock, exit myStock) int {
+	balance := entry.lots*entry.price_min - entry.lots*entry.price
+	return balance
+}
+
+func max(a int, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func min(a int, b int) int {
+	if a == 0 {
+		return b
+	}
+	if a < b {
+		return a
+	}
+	return b
 }
