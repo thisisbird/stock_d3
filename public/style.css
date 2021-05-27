@@ -54,6 +54,12 @@ path.volume.equal {
 .ma-c.loss path.line{
     stroke: #ff0000;
 }
+.green{
+    color:#7def0b;
+}
+.red{
+    color:#ff0000;
+}
 
 
 .ma-0 path.line {
@@ -129,7 +135,12 @@ rect.pane {
 }
 
 
-
+#table table td,th{
+    border: 0.5px outset rgb(121, 112, 93);
+    padding: 10px;
+    /* width: 100%; */
+    font-size: 20px;
+}
 
 
 

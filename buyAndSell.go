@@ -112,10 +112,10 @@ func readCSV(kLine_fileName string) {
 
 		g_kLine_array = append(g_kLine_array, data)
 		recordHighAndLow(data)
-		if i < 5600 {
-			i++
-			continue
-		}
+		// if i < 5600 {
+		// 	i++
+		// 	continue
+		// }
 		if temp_ready { //隔天執行用
 			action()
 			temp_ready = false

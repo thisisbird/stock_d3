@@ -11,7 +11,7 @@ d3.csv(file_index, function (error, data) {
 
 var margin = { top: 20, right: 50, bottom: 30, left: 60 },
         width = 1300 - margin.left - margin.right,
-        height = 1000 - margin.top - margin.bottom;
+        height = 700 - margin.top - margin.bottom;
 
 // 設定時間格式
 var parseDate = d3.timeParse("%Y/%m/%d");
@@ -214,16 +214,52 @@ function loadJSON(k_file, ma_file, action_file) {
                 dataMaArr = dataMaArr_o.filter(function (value) {//MA數字資料
                         return date_start <= parseDate(value['交易日期']) && parseDate(value['交易日期']) <= date_end;
                 });
-                dataBuySellArr = dataBuySellArr_o.filter(function (value) {//MA數字資料
+                dataBuySellArr = dataBuySellArr_o.filter(function (value) {//
                         return date_start <= parseDateTime(value['成交時間']) && parseDateTime(value['成交時間']) <= date_end;
                 });
-
                 // draw(data.slice(start, end), g_volumeData.slice(start, end));
                 draw();
+                drawTable();
         });
 }
 
+function drawTable() {
+        
+        table = `<table>`;
+        // 交易編號,委託單編號,類型,訊號,成交時間,價格,數量,獲利,獲利(%),累積獲利,累積獲利(%),最大可能獲利,最大可能獲利(%),最大可能虧損,最大可能虧損(%)
+        table += `<tr>`;
+        table += `<th>交易編號</th>`;
+        table += `<th>委託單編號</th>`;
+        table += `<th>類型</th>`;
+        table += `<th>訊號</th>`;
+        table += `<th>成交時間</th>`;
+        table += `<th>價格</th>`;
+        table += `<th>數量</th>`;
+        table += `<th>獲利</th>`;
+        table += `<th>累積獲利</th>`;
+        table += `<th>最大可能獲利</th>`;
+        table += `<th>最大可能虧損</th>`;
+        table += `</tr>`;
+        dataBuySellArr.forEach(function (v,i) {
+                table += `<tr>`;
+                table += `<td>${v['交易編號']}</td>`;
+                table += `<td>${v['委託單編號']}</td>`;
+                table += `<td>${v['類型']}</td>`;
+                table += `<td>${v['訊號']}</td>`;
+                table += `<td>${v['成交時間']}</td>`;
+                table += `<td>${v['價格']}</td>`;
+                table += `<td>${v['數量']}</td>`;
+                table += `<td class="${v['獲利'] != 0 ? v['獲利'] >0 ? 'green' : 'red' : ''}">${v['獲利']}</td>`;
+                table += `<td class="${v['累積獲利'] != 0 ? v['累積獲利'] >0 ? 'green' : 'red' : ''}">${v['累積獲利']}</td>`;
+                table += `<td class="${v['最大可能獲利'] != 0 ? v['最大可能獲利'] >0 ? 'green' : 'red' : ''}">${v['最大可能獲利']}</td>`;
+                table += `<td class="${v['最大可能虧損'] != 0 ? v['最大可能虧損'] >0 ? 'green' : 'red' : ''}">${v['最大可能虧損']}</td>`;
+                table += `</tr>`;
+        });
 
+        table += `</table>`;
+        $('#table').html(table);
+        table = '';
+}
 
 function draw() {
         // 設定domain，決定各座標所用到的資料
@@ -256,7 +292,6 @@ function draw() {
                         temp = []
                 }
         });
-        console.log(get_line);
         var get_line = get_line.map(function (d) {
                 return {
                         date: parseDateTime(d["成交時間"]) ?? null,
@@ -379,13 +414,15 @@ function zoomed() {
         rescaledX = d3.event.transform.rescaleY(x);
         rescaledY = d3.event.transform.rescaleY(y);
         // y座標zoom
-        yAxis.scale(rescaledY);
-        candlestick.yScale(rescaledY);
-        smac.yScale(rescaledY);
-        sma0.yScale(rescaledY);
-        sma1.yScale(rescaledY);
-        ema2.yScale(rescaledY);
-        tradearrow.yScale(rescaledY);
+
+        // yAxis.scale(rescaledY);
+        // candlestick.yScale(rescaledY);
+        // smac.yScale(rescaledY);
+        // sma0.yScale(rescaledY);
+        // sma1.yScale(rescaledY);
+        // ema2.yScale(rescaledY);
+        // tradearrow.yScale(rescaledY);
+
         // Emulates D3 behaviour, required for financetime due to secondary zoomable scale
         //K線圖 x zoom
         x.zoomable().domain(d3.event.transform.rescaleX(zoomableInit).domain());
