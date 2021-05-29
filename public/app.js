@@ -1,4 +1,10 @@
 //讀取資料列表-動態產生按鈕
+$('#tax,#to_TWD').on('change',function () {
+        
+        toRealPrice();
+})
+
+
 var file_index = "data/index.csv";
 var list_index;
 d3.csv(file_index, function (error, data) {
@@ -99,7 +105,7 @@ var crosshair = techan.plot.crosshair()
         .on("move", move);
 
 // 設定文字區域
-var textSvg = d3.select("body").append("svg")
+var textSvg = d3.select("#graph").append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", margin.top + margin.bottom)
         .append("g")
@@ -114,7 +120,7 @@ var svgText = textSvg.append("g")
         .style("text-anchor", "start")
         .text("");
 //設定畫圖區域
-var svg = d3.select("body")
+var svg = d3.select("#graph")
         .append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
@@ -223,6 +229,20 @@ function loadJSON(k_file, ma_file, action_file) {
         });
 }
 
+
+function toRealPrice() {
+        tax = $('#tax').val();//滑價
+        to_TWD = $('#to_TWD').val();//一點價格
+        $('.price').each(function (i,v) {
+                price = $(v).data('price');
+                lots = $(v).data('lots');
+                if (price != 0){
+                        price = price*to_TWD - 2*tax*lots;//每次交易算一次(TODO還沒計算口數)
+                        $(v).text(price);
+                }
+        })
+}
+
 function drawTable() {
         
         table = `<table>`;
@@ -232,7 +252,7 @@ function drawTable() {
         table += `<th>委託單編號</th>`;
         table += `<th>類型</th>`;
         table += `<th>訊號</th>`;
-        table += `<th>成交時間</th>`;
+        table += `<th style="width:210px">成交時間</th>`;
         table += `<th>價格</th>`;
         table += `<th>數量</th>`;
         table += `<th>獲利</th>`;
@@ -249,16 +269,17 @@ function drawTable() {
                 table += `<td>${v['成交時間']}</td>`;
                 table += `<td>${v['價格']}</td>`;
                 table += `<td>${v['數量']}</td>`;
-                table += `<td class="${v['獲利'] != 0 ? v['獲利'] >0 ? 'green' : 'red' : ''}">${v['獲利']}</td>`;
-                table += `<td class="${v['累積獲利'] != 0 ? v['累積獲利'] >0 ? 'green' : 'red' : ''}">${v['累積獲利']}</td>`;
-                table += `<td class="${v['最大可能獲利'] != 0 ? v['最大可能獲利'] >0 ? 'green' : 'red' : ''}">${v['最大可能獲利']}</td>`;
-                table += `<td class="${v['最大可能虧損'] != 0 ? v['最大可能虧損'] >0 ? 'green' : 'red' : ''}">${v['最大可能虧損']}</td>`;
+                table += `<td class="price ${v['獲利'] != 0 ? v['獲利'] >0 ? 'price_green' : 'price_red' : ''}" data-price="${v['獲利']}" data-lots="${v['數量']}">${v['獲利']}</td>`;
+                table += `<td class="price ${v['累積獲利'] != 0 ? v['累積獲利'] >0 ? 'price_green' : 'price_red' : ''}" data-price="${v['累積獲利']}" data-lots="${v['數量']}">${v['累積獲利']}</td>`;
+                table += `<td class="price ${v['最大可能獲利'] != 0 ? v['最大可能獲利'] >0 ? 'price_green' : 'price_red' : ''}" data-price="${v['最大可能獲利']}" data-lots="${v['數量']}">${v['最大可能獲利']}</td>`;
+                table += `<td class="price ${v['最大可能虧損'] != 0 ? v['最大可能虧損'] >0 ? 'price_green' : 'price_red' : ''}" data-price="${v['最大可能虧損']}" data-lots="${v['數量']}">${v['最大可能虧損']}</td>`;
                 table += `</tr>`;
         });
 
         table += `</table>`;
         $('#table').html(table);
         table = '';
+        toRealPrice();
 }
 
 function draw() {
