@@ -130,7 +130,7 @@ rect.pane {
 }
 
 
-#table table td,th{
+table td,th{
     border: 0.5px outset rgb(121, 112, 93);
     padding: 10px;
     /* width: 100%; */
@@ -170,7 +170,7 @@ rect.pane {
 
 #graph{
     float: left;
-    width: 50%;
+    width: 1350px;
 }
 #table{
     float: left;
