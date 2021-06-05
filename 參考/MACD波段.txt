@@ -1,0 +1,265 @@
+0800-1400
+60min
+不轉昌
+
+
+
+inputs:  FastLength( 12 ), SlowLength( 26 ), MACDLength( 9 ),
+         X(5),Y(10),Z(20), lots(2), XX(12), X1(5),X2(5),X3(5) ;
+variables:
+  var0( 0 ), var1( 0 ), var2( 0 ),
+  var00( 0 ), var11( 0 ), var22( 0 ),
+  var000( 0 ), var111( 0 ), var222( 0 ), VIX1(0), flag1(0),flag2(0),flag3(0),
+  flag4(0),flag5(0),flag6(0),flag7(0),flag8(0),flag9(0);
+
+var0 = MACD( Xaverage(c,X), FastLength, SlowLength ) ;
+var1 = XAverage( var0, MACDLength ) ;
+var2 = var0 - var1 ;
+
+var00 = MACD( Xaverage(c,Y), FastLength, SlowLength ) ;
+var11 = XAverage( var00, MACDLength ) ;
+var22 = var00 - var11 ;
+
+var000 = MACD( Xaverage(c,Z), FastLength, SlowLength ) ;
+var111 = XAverage( var000, MACDLength ) ;
+var222 = var000 - var111 ;
+
+//vix1=100*( 0.601*log(highest(h data2,10)/close data2)*Squareroot(252)/SquareRoot(10)+0.1);
+
+
+//buy entry
+condition1 = CurrentBar > 2;
+condition2 = var2 > 0 and var22 > 0 and var222 > 0;
+condition3 = var2 > var2[1] and var22 > var22[1];// and var222 > var222[1] ;
+condition4 = var0 > 0 and var1 > 0;
+//condition7 = averagefc(c,20) > averagefc(c,20)[1];
+condition7 = averagefc(c,20) > averagefc(c,20)[1] and averagefc(c,20)[1] > averagefc(c,20)[2];
+//condition8 = averagefc(c,X1) < averagefc(c,X1)[1] and AverageFC(c,X1)[1] < AverageFC(c,X1)[2];
+
+
+if var2 crosses over 5 then flag1=1;
+if var2 crosses under 5 then flag1=0;
+if var22 crosses over 0 then flag2=1;
+if var22 crosses under 0 then flag2=0;
+if var222 crosses over 0 then flag3=1;
+if var222 crosses under 0 then flag3=0;
+
+
+if marketposition=1 then flag1=0;
+if marketposition=1 then flag2=0;
+if marketposition=1 then flag3=0;
+
+
+if marketposition=0 and condition1
+//and condition2
+//and condition3 and condition4 and flag1=1 and flag2=1
+and condition3 
+//and condition4
+and condition7
+and flag1=1 and flag2=1
+then Buy ( "MacdLE" ) lots contract next bar at market ;
+
+//buy out
+
+if marketposition=1 {and barssinceentry>X1}
+then sell ("LX-trailVol_B") lots contract next bar 
+at highest(high,barssinceentry)-average(high-low,4)*5 stop;{4,5}
+
+
+{
+if marketposition=1 then sell ("LX-200_B") lots/2 contract next bar 
+at entryprice+200 limit;
+}
+
+if marketposition=1 and c > entryprice+50 then begin
+if var2<-10 then sell ("LX-var2out_B") lots/2 contract next bar at market;
+if var2<0 then sell ("LX-var2out2_B") lots/2 contract next bar at highest(high,barssinceentry)-50 stop;
+end;
+
+{bias}
+if marketposition=1 {and c>entryprice}
+and (c-AverageFC(c,30)[1])/(AverageFC(c,30)[1])>0.05 then {35}
+sell ("Bias_LX") lots contract next bar at market;
+
+
+{
+{time laopao}
+IF barssinceentry>10 and marketposition=1 and c<entryprice then 
+sell ("time_out_L") lots/2 contract next bar at lowest(L,5)[1] stop;{5,5}
+}
+{
+//volatility small to big
+input: Length_L(30),Length_S(20), { initial exit Nbars for recent high/low period }
+       Ratio_L(0.5),Ratio_S(1.5) ; { initial Volatility ratio for Nbar period}
+vars: MP(0) ,Volatility_L(0),Volatility_S(0),
+          Exit_L(Low) , Exit_S(High) ; {  Recent Nbars exit}
+MP = MarketPosition ;
+if MP <> MP[1] then Begin
+        Exit_L = Low ;
+        Exit_S = High ; end;
+if MP > 0 then Begin
+        
+    { Record Long Entry information }
+        if MP[1] <> MP then Begin
+        Exit_L = Lowest(Low,Length_L) ;
+                Volatility_L = Volatility(Length_L) ;
+        end;
+        { Check Volatility Change Amount }
+        if Volatility(Length_L) > (Volatility_L * (1+Ratio_L)) then Exit_L = Lowest(Low,intportion(Length_L/2)+1) ;
+
+       SELL ("V_SELL") next bar at Exit_L stop ; 
+       SELL ("Normal_SELL") next bar at Lowest(Low,Length_L) stop;
+       
+       
+end;
+}
+
+{
+if MP < 0 then Begin
+        
+    { Record Short Entry information }
+        if MP[1] <> MP then Begin
+        Exit_S = Highest(High,Length_S) ;
+                Volatility_S = Volatility(Length_S) ;
+        end;
+        { Check Volatility Change Amount }
+        if Volatility(Length_S) > (Volatility_S * (1+Ratio_S)) then Exit_S = Highest(High,intportion(Length_S/2)+1) ;
+    //   BUYTOCOVER ("V_buytocover") next bar at Exit_S stop ; 
+    //   BUYTOCOVER ("Normal_") next bar at Highest(High,Length_S) stop;
+end;
+}
+{
+//
+input: Length_L(20),Length_S(20), { initial exit Nbars for recent high/low period }
+       Ratio_L1(0.5),Ratio_S1(0.5),Ratio_L2(0.2),Ratio_S2(0.2) ; { initial Volatility ratio for Nbar period}
+vars: MP(0),Confirm_L(false),Confirm_S(false),
+          Volatility_L(0),Volatility_S(0),
+          Exit_L(Low) , Exit_S(High) ; {  Recent  Nbars exit}
+MP = MarketPosition ;
+if MP <> MP[1] then Begin
+        Exit_L = Low ;
+        Exit_S = High ;
+        Confirm_L = false ;
+        Confirm_S = false ;
+end;
+if MP > 0 then Begin
+        
+    { Record Long Entry information }
+        if MP[1] <> MP then Begin
+        Exit_L = Lowest(Low,Length_L) ;
+                Volatility_L = Volatility(Length_L) ;
+        end;
+        { Check if Volatility Change Amount > Ratio_L1 }
+        if Volatility(Length_L) > (Volatility_L * (1+Ratio_L1)) then Confirm_L = true ;
+        { Check if Volatility Lower to exit point }
+    if (Ratio_L1 > Ratio_L2) and Confirm_L and Volatility(Length_L) < Volatility_L * (1+Ratio_L2) 
+                then SELL ("V_DOWN_S") next bar at Market ;
+        SELL ("Normal L exit") next bar at Exit_L stop ; 
+    
+end;
+}
+{
+if MP < 0 then Begin
+        
+    { Record Short Entry information }
+        if MP[1] <> MP then Begin
+        Exit_S = Highest(High,Length_S) ;
+                Volatility_S = Volatility(Length_S) ;
+        end;
+        { Check if Volatility Change Amount > Ratio_S1 }
+        if Volatility(Length_S) > (Volatility_S * (1+Ratio_S1)) then Confirm_S = true ;
+        { Check if Volatility Lower to exit point }
+    if (Ratio_S1 > Ratio_S2) and Confirm_S and Volatility(Length_S) < Volatility_S * (1+Ratio_S2) 
+                then BUYTOCOVER ("V_DOWN_L") next bar at Market ;
+        BUYTOCOVER ("Normal S exit") next bar at Exit_S stop ; 
+end;
+}
+
+
+
+
+
+
+//sellshort entry
+condition1 = CurrentBar > 2;
+//condition5 = var2 < 0 and var22 < 0 and var222 < 0 ;
+condition5 = var2[1] < var2[2] and var22[1] < var22[2];// and var222[1] < var222[2] ;
+condition6 = var0<0 and var1<0;
+
+
+if var2 crosses under -10 then flag4=1;{10}
+if var2 crosses over -10 then flag4=0;
+if var22 crosses under -5 then flag5=1;{5}
+if var22 crosses over -5 then flag5=0;
+if var222 crosses under 0 then flag6=1;
+if var222 crosses over 0 then flag6=0;
+
+
+if marketposition=-1 then flag4=0;
+if marketposition=-1 then flag5=0;
+if marketposition=-1 then flag6=0;
+
+
+if marketposition=0 and condition1 
+and condition5
+and condition6
+and flag4=1
+and flag5=1 
+//and flag6=1
+
+then Sell Short ( "MacdSE" ) lots contract next bar at market ;
+
+
+//sellshort out	
+if marketposition=-1 then buytocover ("SX-trailVol_S") lots contract 
+next bar at lowest(low,barssinceentry)+Average(high-low,6)*4 stop;{6,4}
+
+{
+{Pattern-Exit}
+if marketposition=-1 and barssinceentry>3 and countif(c>entryprice,3)=3 
+then buytocover("Pattern_SX") lots/2 contract next bar at market;
+}
+{
+{Ladder-Exit}
+vars:BuyStprice(0),SellStprice(0);
+if date<>date[1] then BuyStprice=99999;
+if date<>date[1] then SellStprice=0;
+
+if marketposition=-1 and barssinceentry>3 and highest(high,5)-entryprice>30 then begin 
+ if close<lowest(low,barssinceentry)[1] then SellStprice=highest(high,2);       
+ if SellStprice=0 then buytocover("SX-LadderExit") lots/2 contract
+ next bar at SellStprice stop;
+end;      
+}
+
+{time laopao}
+IF barssinceentry>5 and marketposition=-1 and c>entryprice then 
+buytocover ("time_out_S") lots/2 contract next bar at highest(H,15)[1] stop;
+
+{
+{value}
+if marketposition=-1 and currentcontracts>1 and time>0915 then begin
+   if O-C>40 and ticks>5000 and c<entryprice 
+   then buytocover("Bear_SX2") 1 contracts next bar at market;
+end;
+}
+
+{bias}
+if marketposition=-1  
+and (c-AverageFC(c,30)[1])/(AverageFC(c,30)[1])<-0.05 then 
+buytocover ("Bias_SX") lots contract next bar at market;
+
+{
+{Gap}
+IF opend(0)<lowd(1) and openD(1)<lowd(2) and openD(2)<lowd(3) 
+and c<opend(0) then buytocover("Gap_SX") lots/2 contract next bar at L[1] limit; 
+}
+
+{
+if marketposition=-1 and c < entryprice-50 then begin
+if var2>20 then buytocover ("SX-var2out_S") lots/2 contract next bar at market;
+if var2>20 then buytocover ("SX-var2out2_S") lots/2 contract next bar at lowest(low,barssinceentry)+50 stop;
+end;
+}
+
+

@@ -231,11 +231,61 @@ function loadJSON(k_file, ma_file, action_file) {
         });
 }
 function drawTable2() {
-        $('#table2').html(123);
         date_start = $('#start_year').val() + $('#start_month').val();
         date_start = monthDate(date_start);
 
-        console.log(date_start.getMonth());
+        
+        data_month = [];
+        data_year = [];
+        for (let i = 0; i < 12; i++) {
+                row = {"年份":"xxxx","year_count":0,"期間":(i+1)+'月',"平均獲利":0,"毛利":0,"毛損":0,"獲利因子":0,"平均交易數量":0,"勝率":"0%","win":0,"loss":0,"count":0,"total_price":0};
+                data_month[i] = row;
+        }
+
+        dataBuySellArr_o.forEach(function (v,i) {
+                let row = {"年份":"xxxx","year_count":0,"期間":'月',"平均獲利":0,"毛利":0,"毛損":0,"獲利因子":0,"平均交易數量":0,"勝率":"0%","win":0,"loss":0,"count":0,"total_price":0};
+
+                if(v['類型'] == "sell"){//
+                        month_key = parseDateTime(v['成交時間']).getMonth();
+                        year = parseDateTime(v['成交時間']).getFullYear();
+                        if(data_month[month_key]["年份"] != year){
+                                data_month[month_key]["年份"] = year;
+                                data_month[month_key]["year_count"] += 1;
+                        }
+                        data_month[month_key]["total_price"] += parseInt(v['獲利']);
+                        data_month[month_key]["count"] += 1;
+                        if(v['獲利'] > 0){
+                                data_month[month_key]["win"] += 1;
+                                data_month[month_key]["毛利"] += parseInt(v['獲利']);
+                        }
+                        if(v['獲利'] < 0){
+                                data_month[month_key]["loss"] += 1;
+                                data_month[month_key]["毛損"] += parseInt(v['獲利']);
+                        }
+                }
+                if(v['類型'] == "sell"){//年份資料
+                        month = parseDateTime(v['成交時間']).getMonth();
+                        year_key = parseDateTime(v['成交時間']).getFullYear();
+                        if(data_year[year_key] === undefined){
+                                data_year[year_key] = row;
+                        }
+                        if(data_year[year_key]["年份"] != year_key){
+                                data_year[year_key]["年份"] = year_key;
+                        }
+                        // data_year[year_key]["year_count"] += 1;
+                        data_year[year_key]["total_price"] += parseInt(v['獲利']);
+                        data_year[year_key]["count"] += 1;
+                        if(v['獲利'] > 0){
+                                data_year[year_key]["win"] += 1;
+                                data_year[year_key]["毛利"] += parseInt(v['獲利']);
+                        }
+                        if(v['獲利'] < 0){
+                                data_year[year_key]["loss"] += 1;
+                                data_year[year_key]["毛損"] += parseInt(v['獲利']);
+                        }
+                }
+        
+        });
         table = `<table>`;
         // 期間,平均獲利,毛利,毛損,獲利因子,平均交易數量,勝率
         table += `<tr>`;
@@ -249,55 +299,61 @@ function drawTable2() {
         table += `<th>輸</th>`;
         table += `<th>勝率</th>`;
         table += `</tr>`;
-        data = [];
         for (let i = 0; i < 12; i++) {
-                row = {"年份":"xxxx","year_count":0,"期間":(i+1)+'月',"平均獲利":0,"毛利":0,"毛損":0,"獲利因子":0,"平均交易數量":0,"勝率":"0%","win":0,"loss":0,"count":0,"total_price":0};
-                data[i] = row;
-        }
-        dataBuySellArr_o.forEach(function (v,i) {
-                if(v['類型'] == "sell"){
-                        month_key = parseDateTime(v['成交時間']).getMonth();
-                        year = parseDateTime(v['成交時間']).getFullYear();
-                        if(data[month_key]["年份"] != year){
-                                data[month_key]["年份"] = year;
-                                data[month_key]["year_count"] += 1;
-                        }
-                        data[month_key]["total_price"] += parseInt(v['獲利']);
-                        data[month_key]["count"] += 1;
-                        if(v['獲利'] > 0){
-                                data[month_key]["win"] += 1;
-                                data[month_key]["毛利"] += parseInt(v['獲利']);
-                        }
-                        if(v['獲利'] < 0){
-                                data[month_key]["loss"] += 1;
-                                data[month_key]["毛損"] += parseInt(v['獲利']);
-                        }
-                }
-        
-        });
-        console.log(data);
-        for (let i = 0; i < 12; i++) {
-                let price = (data[i]['total_price']/data[i]['year_count']).toFixed(2);
-                let win_price = (data[i]['毛利']/data[i]['year_count']).toFixed(2);
-                let loss_price = (data[i]['毛損']/data[i]['year_count']).toFixed(2);
+                let price = (data_month[i]['total_price']/data_month[i]['year_count']).toFixed(2);
+                let win_price = (data_month[i]['毛利']/data_month[i]['year_count']).toFixed(2);
+                let loss_price = (data_month[i]['毛損']/data_month[i]['year_count']).toFixed(2);
                 table += `<tr>`;
-                table += `<td>${data[i]['期間']}</td>`;
+                table += `<td>${data_month[i]['期間']}</td>`;
                 table += `<td class="price ${price > 0 ? 'price_green':'price_red'}" data-price="${price}">${price}</td>`;
                 table += `<td class="price ${win_price > 0 ? 'price_green':'price_red'}" data-price="${win_price}">${win_price}</td>`;
                 table += `<td class="price ${loss_price > 0 ? 'price_green':'price_red'}" data-price="${loss_price}">${loss_price}</td>`;
-                table += `<td>${(data[i]['毛利']/data[i]['毛損'] * -1).toFixed(2)}</td>`;
-                table += `<td>${(data[i]['count']/data[i]['year_count']).toFixed(2)}</td>`;
-                table += `<td>${(data[i]['win']/data[i]['year_count']).toFixed(2)}</td>`;
-                table += `<td>${(data[i]['loss']/data[i]['year_count']).toFixed(2)}</td>`;
-                table += `<td>${(data[i]['win'] / data[i]['count'] *100).toFixed(2)} %</td>`;
+                table += `<td>${(data_month[i]['毛利']/data_month[i]['毛損'] * -1).toFixed(2)}</td>`;
+                table += `<td>${(data_month[i]['count']/data_month[i]['year_count']).toFixed(2)}</td>`;
+                table += `<td>${(data_month[i]['win']/data_month[i]['year_count']).toFixed(2)}</td>`;
+                table += `<td>${(data_month[i]['loss']/data_month[i]['year_count']).toFixed(2)}</td>`;
+                table += `<td>${(data_month[i]['win'] / data_month[i]['count'] *100).toFixed(2)} %</td>`;
         
                 table += `</tr>`;
         }
-       
-
         table += `</table>`;
-        $('#table2').html(table);
-        table = '';
+        $('#table_month').html(table);
+        table = `<table>`;
+
+
+        // 期間,平均獲利,毛利,毛損,獲利因子,平均交易數量,勝率
+        table += `<tr>`;
+        table += `<th>期間</th>`;
+        table += `<th>獲利</th>`;
+        table += `<th>毛利</th>`;
+        table += `<th>毛損</th>`;
+        table += `<th>獲利因子</th>`;
+        table += `<th>交易數量</th>`;
+        table += `<th>贏</th>`;
+        table += `<th>輸</th>`;
+        table += `<th>勝率</th>`;
+        table += `</tr>`;
+
+        data_year.forEach(function (v,i) {
+                let price = (v['total_price']).toFixed(2);
+                let win_price = (v['毛利']).toFixed(2);
+                let loss_price = (v['毛損']).toFixed(2);
+                table += `<tr>`;
+                table += `<td>${v['年份']}</td>`;
+                table += `<td class="price ${price > 0 ? 'price_green':'price_red'}" data-price="${price}">${price}</td>`;
+                table += `<td class="price ${win_price > 0 ? 'price_green':'price_red'}" data-price="${win_price}">${win_price}</td>`;
+                table += `<td class="price ${loss_price > 0 ? 'price_green':'price_red'}" data-price="${loss_price}">${loss_price}</td>`;
+                table += `<td>${(v['毛利']/v['毛損'] * -1).toFixed(2)}</td>`;
+                table += `<td>${(v['count']).toFixed(2)}</td>`;
+                table += `<td>${(v['win']).toFixed(2)}</td>`;
+                table += `<td>${(v['loss']).toFixed(2)}</td>`;
+                table += `<td>${(v['win'] / v['count'] *100).toFixed(2)} %</td>`;
+        
+                table += `</tr>`;
+        });
+        table += `</table>`;
+        $('#table_year').html(table);
+        table = `<table>`;
 }
 
 
@@ -350,7 +406,7 @@ function drawTable() {
         });
 
         table += `</table>`;
-        $('#table').html(table);
+        $('#table_row').html(table);
         table = '';
         
 }

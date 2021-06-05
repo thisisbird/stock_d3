@@ -172,11 +172,7 @@ table td,th{
     float: left;
     width: 1350px;
 }
-#table{
-    float: left;
-    width: 50%;
-}
-#table2{
+#table_row,#table_year,#table_month{
     float: left;
     width: 50%;
 }
