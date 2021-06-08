@@ -8,7 +8,8 @@ import (
 	"strconv"
 	"strings"
 )
-type fn func() 
+
+type fn func()
 type myStock struct {
 	index           int
 	index_action    int
@@ -43,29 +44,29 @@ type kLine struct {
 
 type Buy string
 type Sell string
+
 var g_myStock_array = []myStock{}
-var G_kLine_array = []kLine{}
+var g_kLine_array = []kLine{}
 var total = 0
 var lots = 0 //初始口數
 var K = -1   //天數
 
 //以下可調整參數
-var max_lots = 2 //做多最大口數
-var min_lots = 0 //做空最大口數
+var Max_lots = 2 //做多最大口數
+var Min_lots = 0 //做空最大口數
 var path = "public/data/"
-var k_file = "0845_300min"
+var K_file = "0845_300min"
 
 //以上可調整參數
 
-var finalName = k_file + "_action.csv"   //依時間排序
-var finalName2 = k_file + "_action2.csv" //進出場對應排序
-var _ = os.Remove(path + finalName)
-var _ = os.Remove(path + finalName2)
-var finalFile, _ = os.OpenFile(path+finalName, os.O_WRONLY|os.O_CREATE, os.FileMode(0600))
-var finalFile2, _ = os.OpenFile(path+finalName2, os.O_WRONLY|os.O_CREATE, os.FileMode(0600))
+var FinalName = K_file + "_action.csv"   //依時間排序
+var FinalName2 = K_file + "_action2.csv" //進出場對應排序
+
+var finalFile *os.File
+var finalFile2 *os.File
 
 // func Strategy() { //在其他檔案撰寫策略
-// 	kk := G_kLine_array
+// 	kk := g_kLine_array
 
 // 	if len(kk) > 10 {
 // 		if kk[K-3].C < kk[K-2].C && kk[K-2].C < kk[K-1].C && kk[K-1].C < kk[K].C { //連漲四k
@@ -80,11 +81,15 @@ var finalFile2, _ = os.OpenFile(path+finalName2, os.O_WRONLY|os.O_CREATE, os.Fil
 // }
 
 func Main(myfunction fn) {
-	min_lots *= -1
-	readCSV(path + k_file + ".csv",myfunction)
+	os.Remove(path + FinalName)
+	os.Remove(path + FinalName2)
+	finalFile, _ = os.OpenFile(path+FinalName, os.O_WRONLY|os.O_CREATE, os.FileMode(0600))
+	finalFile2, _ = os.OpenFile(path+FinalName2, os.O_WRONLY|os.O_CREATE, os.FileMode(0600))
+	Min_lots *= -1
+	readCSV(path+K_file+".csv", myfunction)
 }
 
-func readCSV(kLine_fileName string,functionA fn) {
+func readCSV(kLine_fileName string, StrategyFunction fn) {
 	file, err := os.Open(kLine_fileName)
 	check(err)
 
@@ -109,19 +114,17 @@ func readCSV(kLine_fileName string,functionA fn) {
 		data.C, _ = strconv.Atoi(sli[5])
 		data.V, _ = strconv.Atoi(sli[6])
 
-		G_kLine_array = append(G_kLine_array, data)
+		g_kLine_array = append(g_kLine_array, data)
 		recordHighAndLow(data)
-		// if i < 5600 {
-		// 	i++
-		// 	continue
-		// }
 		if temp_ready { //隔天執行用
 			action()
 			temp_ready = false
 		}
 
 		// Strategy() //策略判斷
-		functionA()
+		if K > 10 {
+			StrategyFunction()
+		}
 		K++
 	}
 	err = file.Close()
@@ -183,14 +186,14 @@ func action() { //執行策略(紀錄)
 	is_action := false
 	myStock := myStock{}
 
-	if 0 <= lots && (lots+temp_lots) <= max_lots && temp_action == "buy" {
-		myStock.price = G_kLine_array[K].C
+	if 0 <= lots && (lots+temp_lots) <= Max_lots && temp_action == "buy" {
+		myStock.price = g_kLine_array[K].C
 		myStock.balance = 0
 		lots += temp_lots
 		is_action = true
 	}
-	if 0 <= (lots-temp_lots) && lots <= max_lots && temp_action == "sell" {
-		myStock.price = G_kLine_array[K].C
+	if 0 <= (lots-temp_lots) && lots <= Max_lots && temp_action == "sell" {
+		myStock.price = g_kLine_array[K].C
 
 		lots -= temp_lots
 
@@ -201,7 +204,7 @@ func action() { //執行策略(紀錄)
 	}
 
 	if is_action { //執行動作
-		myStock.datetime = G_kLine_array[K].Date + " " + G_kLine_array[K].Time
+		myStock.datetime = g_kLine_array[K].Date + " " + g_kLine_array[K].Time
 		myStock.action = temp_action
 		myStock.action_name = temp_action_name
 		myStock.lots = temp_lots
@@ -227,6 +230,11 @@ func action2(myStock myStock) { //進出場對應排序
 
 		if g_myStock_array[0].lots == myStock.lots { //口數比對
 
+			myStock.balance = balance(g_myStock_array[0], myStock)
+			myStock.balance_final = temp_balance_final
+			myStock.balance_max = balanceMax(g_myStock_array[0], myStock)
+			myStock.balance_min = balanceMin(g_myStock_array[0], myStock)
+
 			saveRow(finalFile2, g_myStock_array[0])
 			saveRow(finalFile2, myStock)
 			g_myStock_array = g_myStock_array[1:]
@@ -236,6 +244,10 @@ func action2(myStock myStock) { //進出場對應排序
 			new_lots := g_myStock_array[0].lots - myStock.lots
 			g_myStock_array[0].lots = myStock.lots
 
+			myStock.balance = balance(g_myStock_array[0], myStock)
+			myStock.balance_final = temp_balance_final
+			myStock.balance_max = balanceMax(g_myStock_array[0], myStock)
+			myStock.balance_min = balanceMin(g_myStock_array[0], myStock)
 			saveRow(finalFile2, g_myStock_array[0])
 			saveRow(finalFile2, myStock)
 
@@ -325,4 +337,28 @@ func min(a int, b int) int {
 		return a
 	}
 	return b
+}
+
+func C(x int) int { //收盤價
+	return g_kLine_array[K-x].C
+}
+
+func EMA(x int) float32 {
+	total := (x + 1) * x / 2
+	var ema float32
+	for i := 0; i < x; i++ {
+		ema += float32(g_kLine_array[K-i].C*(x-i)) / float32(total)
+	}
+	return ema
+}
+
+type First func(int) int
+type Second func(int) First
+
+func SquareSum(x int) Second {
+	return func(y int) First {
+		return func(z int) int {
+			return x*x + y*y + z*z
+		}
+	}
 }
