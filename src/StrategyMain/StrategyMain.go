@@ -45,8 +45,10 @@ type kLine struct {
 type Buy string
 type Sell string
 
+var C = []float32{}
 var g_myStock_array = []myStock{}
 var g_kLine_array = []kLine{}
+
 var total = 0
 var lots = 0 //初始口數
 var K = -1   //天數
@@ -80,16 +82,16 @@ var finalFile2 *os.File
 
 // }
 
-func Main(myfunction fn) {
+func Main(myfunction fn, setReady fn) {
 	os.Remove(path + FinalName)
 	os.Remove(path + FinalName2)
 	finalFile, _ = os.OpenFile(path+FinalName, os.O_WRONLY|os.O_CREATE, os.FileMode(0600))
 	finalFile2, _ = os.OpenFile(path+FinalName2, os.O_WRONLY|os.O_CREATE, os.FileMode(0600))
 	Min_lots *= -1
-	readCSV(path+K_file+".csv", myfunction)
+	readCSV(path+K_file+".csv", myfunction, setReady)
 }
 
-func readCSV(kLine_fileName string, StrategyFunction fn) {
+func readCSV(kLine_fileName string, StrategyFunction fn, setReady fn) {
 	file, err := os.Open(kLine_fileName)
 	check(err)
 
@@ -99,8 +101,8 @@ func readCSV(kLine_fileName string, StrategyFunction fn) {
 
 		if K == -1 { //跳過第一行標題
 			K++
-			_, err = fmt.Fprintln(finalFile, "交易編號,委託單編號,類型,訊號,成交時間,價格,數量,獲利,獲利(%),累積獲利,累積獲利(%),最大可能獲利,最大可能獲利(%),最大可能虧損,最大可能虧損(%)")
-			_, err = fmt.Fprintln(finalFile2, "交易編號,委託單編號,類型,訊號,成交時間,價格,數量,獲利,獲利(%),累積獲利,累積獲利(%),最大可能獲利,最大可能獲利(%),最大可能虧損,最大可能虧損(%)")
+			fmt.Fprintln(finalFile, "交易編號,委託單編號,類型,訊號,成交時間,價格,數量,獲利,獲利(%),累積獲利,累積獲利(%),最大可能獲利,最大可能獲利(%),最大可能虧損,最大可能虧損(%)")
+			fmt.Fprintln(finalFile2, "交易編號,委託單編號,類型,訊號,成交時間,價格,數量,獲利,獲利(%),累積獲利,累積獲利(%),最大可能獲利,最大可能獲利(%),最大可能虧損,最大可能虧損(%)")
 			continue
 		}
 
@@ -113,16 +115,19 @@ func readCSV(kLine_fileName string, StrategyFunction fn) {
 		data.L, _ = strconv.Atoi(sli[4])
 		data.C, _ = strconv.Atoi(sli[5])
 		data.V, _ = strconv.Atoi(sli[6])
-
-		g_kLine_array = append(g_kLine_array, data)
+		g_kLine_array = prependKline(g_kLine_array, data)
 		recordHighAndLow(data)
 		if temp_ready { //隔天執行用
 			action()
 			temp_ready = false
 		}
 
+		SET(&C, float32(data.C))
+		setReady() //設置變數
+
 		// Strategy() //策略判斷
-		if K > 10 {
+		if K > 26 {
+
 			StrategyFunction()
 		}
 		K++
@@ -179,7 +184,6 @@ func (b Buy) NextBar() {
 	temp_action_name = string(b)
 	temp_action = "buy"
 	temp_ready = true
-	// action()
 }
 
 func action() { //執行策略(紀錄)
@@ -187,13 +191,13 @@ func action() { //執行策略(紀錄)
 	myStock := myStock{}
 
 	if 0 <= lots && (lots+temp_lots) <= Max_lots && temp_action == "buy" {
-		myStock.price = g_kLine_array[K].C
-		myStock.balance = 0
+		myStock.price = g_kLine_array[0].O//當天/隔天開盤價
+		// myStock.balance = 0
 		lots += temp_lots
 		is_action = true
 	}
 	if 0 <= (lots-temp_lots) && lots <= Max_lots && temp_action == "sell" {
-		myStock.price = g_kLine_array[K].C
+		myStock.price = g_kLine_array[0].C//當天or隔天收盤價
 
 		lots -= temp_lots
 
@@ -204,7 +208,7 @@ func action() { //執行策略(紀錄)
 	}
 
 	if is_action { //執行動作
-		myStock.datetime = g_kLine_array[K].Date + " " + g_kLine_array[K].Time
+		myStock.datetime = g_kLine_array[0].Date + " " + g_kLine_array[0].Time
 		myStock.action = temp_action
 		myStock.action_name = temp_action_name
 		myStock.lots = temp_lots
@@ -339,26 +343,27 @@ func min(a int, b int) int {
 	return b
 }
 
-func C(x int) int { //收盤價
-	return g_kLine_array[K-x].C
+func prependKline(x []kLine, y kLine) []kLine {
+	x = append(x, y)
+	copy(x[1:], x)
+	x[0] = y
+	return x
 }
 
-func EMA(x int) float32 {
+func SET(x *[]float32, y float32) {
+	*x = append(*x, 0.0)
+	copy((*x)[1:], *x)
+	(*x)[0] = y
+}
+
+func EMA(array []float32, x int) float32 {
+	if len(array) < x {
+		x = len(array)
+	}
 	total := (x + 1) * x / 2
 	var ema float32
 	for i := 0; i < x; i++ {
-		ema += float32(g_kLine_array[K-i].C*(x-i)) / float32(total)
+		ema += array[i] * float32(x-i)
 	}
-	return ema
-}
-
-type First func(int) int
-type Second func(int) First
-
-func SquareSum(x int) Second {
-	return func(y int) First {
-		return func(z int) int {
-			return x*x + y*y + z*z
-		}
-	}
+	return ema / float32(total)
 }
