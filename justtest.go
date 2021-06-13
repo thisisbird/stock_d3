@@ -9,7 +9,7 @@ func main() {
 
 	b := time.Date(2021, 5, 1, 0, 0, 0, 0, time.Local)
 	c := b.Weekday()
-	final := 0//結算日
+	final := 0 //結算日
 	if c == 0 {
 		final = 18
 	}
@@ -33,9 +33,22 @@ func main() {
 	}
 	fmt.Println(final)
 
+	array := []int{1, 2, 3, 4, 5, 6, 7}
+	for i, value := range array {
+		if i == 2 || i == 6{
+			array = remove(array, i)
+		}
+		fmt.Println(i, value)
+	}
+	fmt.Println(array)
+
 }
 
 func isNextMonth(t time.Time) string {
 
 	return "123"
+}
+
+func remove(slice []int, s int) []int {
+	return append(slice[:s], slice[s+1:]...)
 }
