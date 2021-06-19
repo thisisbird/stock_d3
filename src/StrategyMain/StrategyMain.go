@@ -50,8 +50,7 @@ var C = []float32{}
 var g_myStock_array = []myStock{}
 var g_kLine_array = []kLine{}
 
-var total = 0
-var Marketposition = 0 //初始口數
+var Marketposition = 0 //部位
 var K = -1             //天數
 
 //以下可調整參數
@@ -107,14 +106,43 @@ func readCSV(kLine_fileName string, StrategyFunction fn, setReady fn) {
 			actionQueue()
 			temp_ready = false
 		}
+		if is_entry {
+			Barssinceentry++
+		}
+		// fmt.Println(Barssinceentry, data.Date)
 		temp_myStock_array_queue = []myStock{}
-		for _, myStock_in_queue := range myStock_array_queue {
-			is_action := action(myStock_in_queue)
-			if !is_action {
-				temp_myStock_array_queue = append(temp_myStock_array_queue, myStock_in_queue)
+		temp_action_buy := 0  //是否送出買單
+		temp_action_sell := 0 //是否送出賣單
+
+		for _, myStock_in_queue := range myStock_array_queue { //重複執行的訊號種類 直接捨棄不動作
+			if temp_action_buy == 0 && myStock_in_queue.action == "buy" {
+				is_action := action(myStock_in_queue)
+				if is_action {
+					temp_action_buy = 1
+				}
+			}
+			if temp_action_sell == 0 && myStock_in_queue.action == "sell" {
+				is_action := action(myStock_in_queue)
+				if is_action {
+					temp_action_sell = 1
+				}
 			}
 		}
+		for _, myStock_in_queue := range myStock_array_queue { //重新整理myStock_array_queue
+			if temp_action_buy == 0 && myStock_in_queue.action == "buy" {
+				temp_myStock_array_queue = append(temp_myStock_array_queue, myStock_in_queue)
+			}
+			if temp_action_sell == 0 && myStock_in_queue.action == "sell" {
+				temp_myStock_array_queue = append(temp_myStock_array_queue, myStock_in_queue)
+			}
+
+		}
+
 		myStock_array_queue = temp_myStock_array_queue //執行過的訊號移除
+		// if data.Date == "2000/4/14" {
+		// 	fmt.Println(myStock_array_queue, data.Date)
+		// 	panic(123)
+		// }
 		SET(&C, float32(data.C))
 		setReady() //設置變數
 
@@ -143,109 +171,121 @@ func check(err error) {
 	}
 }
 
-var temp_action string
-var temp_action_name string
 var temp_balance_final = 0                 //累積獲利價格
-var temp_price int                         //成交價格
-var temp_price_type string                 //成交價格類型
-var temp_lots int                          //成交口數
+var temp_action_array []string             //訊號動作
+var temp_action_name_array []string        //訊號名稱
+var temp_price_array []int                 //成交價格
+var temp_price_type_array []string         //成交價格類型
+var temp_lots_array []int                  //成交口數
 var temp_ready = false                     //明天是否執行
 var EntryPrice float32                     //進場價格
 var ExitPrice float32                      //出場場價格
+var is_entry = false                       //是否有進場
+var Barssinceentry = 0                     //進場天數
 var myStock_array_queue = []myStock{}      //訊號紀錄佇列
 var temp_myStock_array_queue = []myStock{} //更新用的 訊號紀錄佇列
 
 func (s Sell) At(a string, price ...float32) {
 	if a == "market" || a == "stop" || a == "limit" {
-		temp_price_type = a
+		temp_price_type_array = append(temp_price_type_array, a)
 	} else {
 		panic("錯誤的動作")
 	}
 	if len(price) > 0 {
-		temp_price = int(price[0])
+		temp_price_array = append(temp_price_array, int(price[0]))
+	} else {
+		temp_price_array = append(temp_price_array, 0)
 	}
 }
 
 func (s Sell) Lots(lots int) Sell {
-	temp_lots = lots
+	temp_lots_array = append(temp_lots_array, lots)
 	return s
 }
 func (s Sell) NextBar() Sell {
-	temp_action_name = string(s)
-	temp_action = "sell"
+	temp_action_name_array = append(temp_action_name_array, string(s))
+	temp_action_array = append(temp_action_array, "sell")
 	temp_ready = true
 	return s
 }
 
 func (b Buy) At(a string, price ...int) {
 	if a == "market" || a == "stop" || a == "limit" {
-		temp_price_type = a
+		temp_price_type_array = append(temp_price_type_array, a)
 	} else {
 		panic("錯誤的動作")
 	}
 	if len(price) > 0 {
-		temp_price = price[0]
+		temp_price_array = append(temp_price_array, price[0])
+	} else {
+		temp_price_array = append(temp_price_array, 0)
 	}
 }
 func (b Buy) Lots(lots int) Buy {
-	temp_lots = lots
+	temp_lots_array = append(temp_lots_array, lots)
 	return b
 }
 func (b Buy) NextBar() Buy {
-	temp_action_name = string(b)
-	temp_action = "buy"
+	temp_action_name_array = append(temp_action_name_array, string(b))
+	temp_action_array = append(temp_action_array, "buy")
 	temp_ready = true
 	return b
 }
 func actionQueue() { //執行策略(先塞到佇列)
-	is_action := false
 
-	if 0 <= Marketposition && (Marketposition+temp_lots) <= Max_lots && temp_action == "buy" {
-		// Marketposition += temp_lots
-		// EntryPrice = float32(myStock.price)
-		is_action = true
-	}
-	if 0 <= (Marketposition-temp_lots) && Marketposition <= Max_lots && temp_action == "sell" {
-		// Marketposition -= temp_lots
-		// ExitPrice = float32(myStock.price)
-		is_action = true
-	}
+	for i, temp_action_name := range temp_action_name_array {
 
-	if is_action {
-		is_double := false //佇列有沒有重複的訊號名稱
-		myStock := myStock{}
+		is_action := false
+		//TODO需考慮一天同時有多個訊號
 
-		if temp_price_type == "market" {
-			myStock.price = g_kLine_array[0].O //當天or隔天開盤價
-		} else if temp_price_type == "limit" {
-			myStock.price = temp_price
-		} else if temp_price_type == "stop" {
-			myStock.price = temp_price
+		if 0 <= Marketposition && (Marketposition+temp_lots_array[i]) <= Max_lots && temp_action_array[i] == "buy" {
+			is_action = true
 		}
-		myStock.action = temp_action
-		myStock.action_name = temp_action_name
-		myStock.price_type = temp_price_type
-		myStock.lots = temp_lots
-		myStock.datetime = g_kLine_array[0].Date + " " + g_kLine_array[0].Time
+		if 0 <= (Marketposition-temp_lots_array[i]) && Marketposition <= Max_lots && temp_action_array[i] == "sell" {
+			is_action = true
+		}
+		if is_action {
+			is_double := false //佇列有沒有重複的訊號名稱
+			myStock := myStock{}
 
-		if len(myStock_array_queue) == 0 { //佇列沒東西直接塞入交易訊號
-			myStock_array_queue = append(myStock_array_queue, myStock) //塞入佇列
-		} else {
-			for _, myStock_in_queue := range myStock_array_queue { //檢查佇列有沒有重複訊號
-				if myStock_in_queue.action_name == myStock.action_name {
-					is_double = true
-					break
+			if temp_price_type_array[i] == "market" {
+				myStock.price = g_kLine_array[0].O //當天or隔天開盤價
+			} else if temp_price_type_array[i] == "limit" {
+				myStock.price = temp_price_array[i]
+			} else if temp_price_type_array[i] == "stop" {
+				myStock.price = temp_price_array[i]
+			}
+			myStock.action = temp_action_array[i]
+			myStock.action_name = temp_action_name
+			myStock.price_type = temp_price_type_array[i]
+			myStock.lots = temp_lots_array[i]
+			myStock.datetime = g_kLine_array[0].Date + " " + g_kLine_array[0].Time
+			// fmt.Println(myStock_array_queue)
+			if len(myStock_array_queue) == 0 { //佇列沒東西直接塞入交易訊號
+				myStock_array_queue = append(myStock_array_queue, myStock) //塞入佇列
+			} else {
+				for _, myStock_in_queue := range myStock_array_queue { //檢查佇列有沒有重複訊號
+					if myStock_in_queue.action_name == myStock.action_name {
+						is_double = true
+						break
+					}
+				}
+				if !is_double {
+					myStock_array_queue = append(myStock_array_queue, myStock) //塞入佇列
 				}
 			}
-			if !is_double {
-				myStock_array_queue = append(myStock_array_queue, myStock) //塞入佇列
-			}
-		}
 
+		}
 	}
+	temp_action_array = []string{}      //訊號動作
+	temp_action_name_array = []string{} //訊號名稱
+	temp_price_array = []int{}          //成交價格
+	temp_price_type_array = []string{}  //成交價格類型
+	temp_lots_array = []int{}
 
 }
 func action(myStock myStock) bool { //執行策略(紀錄)
+
 	is_action := false
 	is_price_ok := false
 
@@ -265,11 +305,15 @@ func action(myStock myStock) bool { //執行策略(紀錄)
 		if 0 <= Marketposition && (Marketposition+myStock.lots) <= Max_lots && myStock.action == "buy" {
 			Marketposition += myStock.lots
 			EntryPrice = float32(myStock.price)
+			Barssinceentry = 1
+			is_entry = true
 			is_action = true
 		}
 		if 0 <= (Marketposition-myStock.lots) && Marketposition <= Max_lots && myStock.action == "sell" {
 			Marketposition -= myStock.lots
 			ExitPrice = float32(myStock.price)
+			Barssinceentry = 1
+			is_entry = false
 			is_action = true
 		}
 	}

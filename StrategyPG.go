@@ -15,6 +15,10 @@ func main() {
 	Main(StrategyA, setReady)
 }
 
+const stop = "stop"
+const limit = "limit"
+const market = "market"
+
 var ems20 []float32
 var ems12 []float32
 var ems26 []float32
@@ -37,17 +41,22 @@ func StrategyA() {
 	// cond4 := dif[0] > 0 &&  macd[0] > 0
 	cond7 := ems20[0] > ems20[1] && ems20[1] > ems20[2]
 
-	if cond3 && cond7{
-		Buy("MacdLE").Lots(1).NextBar().At("market")
+	if cond3 && cond7 {
+		Buy("MacdLE").Lots(1).NextBar().At(market)
+
 	}
-	
+
 	// if C[3] < C[2] && C[2] < C[1] && C[1] < C[0] { //連漲四k
 	// 	Buy("buy_test").Lots(1).NextBar().At("market")
 	// }
 
-	if C[3] > C[2] && C[2] > C[1] && C[1] > C[0] { //連跌四k
-		// Sell("sell_test").Lots(1).NextBar().At("limit", EntryPrice+50)
-		Sell("sell_test").Lots(1).NextBar().At("market")
-	}
+	// if C[3] > C[2] && C[2] > C[1] && C[1] > C[0] { //連跌四k
+	// 	// Sell("sell_test").Lots(1).NextBar().At("limit", EntryPrice+50)
+
+	// }
+	// if Marketposition == 1 && Barssinceentry > 1 {//
+		Sell("sell_test").Lots(1).NextBar().At(limit, EntryPrice+200)
+		Sell("sell_test2").Lots(1).NextBar().At(stop, EntryPrice-1000)
+	// }
 
 }
