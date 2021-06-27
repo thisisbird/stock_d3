@@ -148,7 +148,7 @@ func readCSV(kLine_fileName string, StrategyFunction fn, setReady fn) {
 
 		// Strategy() //策略判斷
 		if K > 26 {
-
+			// fmt.Println(Barssinceentry,data.Date)
 			StrategyFunction()
 		}
 		K++
@@ -260,7 +260,6 @@ func actionQueue() { //執行策略(先塞到佇列)
 			myStock.price_type = temp_price_type_array[i]
 			myStock.lots = temp_lots_array[i]
 			myStock.datetime = g_kLine_array[0].Date + " " + g_kLine_array[0].Time
-			// fmt.Println(myStock_array_queue)
 			if len(myStock_array_queue) == 0 { //佇列沒東西直接塞入交易訊號
 				myStock_array_queue = append(myStock_array_queue, myStock) //塞入佇列
 			} else {
@@ -475,4 +474,25 @@ func EMA(array []float32, x int) float32 {
 		ema += array[i] * float32(x-i)
 	}
 	return ema / float32(total)
+}
+
+func Highest(array []int, x int) int {
+	if len(array) < x {
+		x = len(array)
+	}
+	var high int
+	for i := 0; i < x; i++ {
+		high = max(array[i],high)
+	}
+	return high
+}
+func Lowest(array []int, x int) int {
+	if len(array) < x {
+		x = len(array)
+	}
+	var low int
+	for i := 0; i < x; i++ {
+		low = min(array[i],low)
+	}
+	return low
 }
